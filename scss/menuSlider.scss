@@ -1,0 +1,245 @@
+$background-color: #073700;
+$font-color: #ffe2ae;
+$tablet-width: 768px;
+
+@mixin noBorders($sides: all) {
+	$noBorder: 0px solid #ffffff;
+	
+	@if ($sides == all) {
+		border: $noBorder;
+	}
+	@else {
+		@include setBorders($noBorder, $sides);
+	}	
+}
+
+@mixin setBorders($style, $sides) {
+	/*$sides should be a list of all sides to have the border - just spaces between */
+	$sideNames: top right bottom left;
+	
+	@each $side in $sideNames {
+		$i: index($sides, $side);
+		
+		@if ( $i ) {
+			//set the border for this side
+			border-#{$side}: $style;
+		}
+	}
+}
+
+$MN-background-color: lighten($background-color, 50%);
+$MN-border-color: lighten($background-color, 30%);
+$MN-link-color: $font-color;
+
+body {
+	position: relative;
+}
+
+.mobile-nav {
+    display:none;	
+    position: absolute;
+    right: 10px;
+    top: 10px;
+
+    
+    ul {
+        list-style-type: none;
+    }
+
+    li {
+        padding-bottom: 0px;
+        margin-bottom: 0px;
+    }
+
+    &.left-side {
+        left: 10px;
+        right: auto;
+    }
+
+    a {
+        display:block;
+        color: $MN-link-color;
+        padding: 10px 5px;
+        background: $MN-background-color;
+    }
+    a:visited {
+        @extend a;
+    }
+    a:hover {
+        @extend a;
+    }
+    a:focus {
+        @extend a;
+    }
+    a:active {
+        @extend a;
+    }
+
+    &.fixed-nav {
+        display: block;
+        background-color: $background-color;
+        color: $MN-link-color;
+        right: 0px;
+
+        &.left-side {
+            left: 0px;
+            right: auto;
+        }
+
+        div {
+            padding: 10px 5px;
+            &.little-lines {
+                @media only screen and (min-width: $tablet-width + 1) {
+                    display:none;
+                }
+            }
+        }
+
+        ul {
+            display: block;
+            left: 0;
+
+            &.slide-out {
+                left: 0;
+
+                &.left-side {
+                    left: 0;
+                }
+            }
+        }
+
+        li {
+            display: inline-block;
+
+            ul {
+                display:none;
+            }
+        }
+    }
+
+	@media only screen and (max-width: $tablet-width) {
+		display:block;	
+		padding: 10px;
+		border: 1px outset $MN-border-color;
+		background-color: $MN-background-color; 
+		color: $MN-link-color;
+		
+		ul {
+			display:none;
+			margin-top:10px;
+			position: absolute;
+			right: 0px;
+			width: 66vw;
+			max-width: 300px;
+			background-color: $MN-background-color;
+			z-index:150;
+		}
+		
+		&.slide-out {
+			padding: 0;
+			top: 0;
+			right: 0;
+			background: transparent;
+			@include noBorders(all);
+			
+			> ul {
+				min-width: 200px;
+				max-width: 66vw;
+				left: 100vw;
+				display:block;
+			}
+		}
+		
+		&.left-side {
+			
+			&.slide-out {
+				left: 0;
+				right: auto;
+			
+				ul {
+					left: -66vw;
+					right: auto;
+				}
+			}
+		}
+		
+		
+		div {
+			&.little-lines {
+                padding: 8px;
+                display: block;
+				p {
+					border: 1px outset darken($MN-border-color, 10%);
+					height: 1px;
+					width: 25px;
+                    padding: 0;
+                    margin: 0;
+					margin-bottom: 4px;
+					
+					&:last-child {
+						margin-bottom: 0px;
+					}
+				}
+			}
+			
+			&.menu-button {
+				background-color: $MN-background-color;
+				border: 1px outset $MN-border-color;
+				z-index: 1000;
+				
+				+ .slider {
+					padding-top: 0px;	
+					margin-top:0px;				
+				}
+				
+				&.moving {
+					position: absolute;
+					@include noBorders(bottom left right);
+					/*right: 0;*/
+					
+					+ .slider {
+						/*position:relative;
+						top: 25px;*/
+						padding-top: 50px;
+						border: 1px outset $MN-border-color;
+					}
+				}
+			}
+		}
+		
+		&.hover {
+		
+			> ul {
+				display: block;
+			}
+			
+			&.left-side {
+				
+				ul {
+					left: 0;
+				}
+			}
+		}
+	}
+	
+	li {
+		position: relative;
+			
+		label {
+			transform: rotate(180deg);
+			-ms-transform: rotate(180deg);
+			-webkit-transform: rotate(180deg);
+			position:absolute;
+			right:10px;
+			top: -20px;
+			font-size: 1.875em;
+			color: $MN-link-color;		
+		}
+    }
+    
+    &.test {
+        left: 50%;
+        right: auto;
+    }
+}
+
