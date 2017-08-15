@@ -53,7 +53,7 @@ var slideFunctions = {
                 }
                 else {
                     endPosition = currPosition;
-                    console.log("Warning: slideToPosition `" + slideToPosition + "` is not valid.  Please pass `up`, `down`, `left`, `right`, or an integer. \n endPosition of currPosition `" + endPosition + "` returned.");
+                    console.log("Warning: slideToPosition `" + slideToPosition + "` is not valid.  Please pass `up`, `down`, `left`, `right`, `reset`, or an integer. \n endPosition of currPosition `" + endPosition + "` returned.");
                 }
                 break;
         }
