@@ -71,8 +71,11 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
 
     myFuncs.resizeWindowFunc(function() {self.resetSizes(self); });
 
+    if (this.moveMethod != "scroll" && this.moveMethod != "offset") {
+        throw new Error("`scrollOrOffset` must be either `scroll` or `offset`.  Passed value of `" + scrollOrOffset + "` not valid.");
+    }
+
     this.eachFrame = function(leftOrTop) {
-        console.log(self.current[leftOrTop] != self.end[leftOrTop])
          if (self.current[leftOrTop] != self.end[leftOrTop]) {
             var newPos = self.getNewPos(leftOrTop);
             self.setNewPos(leftOrTop, newPos);
@@ -114,7 +117,6 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
             return Math.round(slideFunctions.getEndTopOrLeft(directionOrPosition, this.current[leftOrTop] * -1, this.slideWidth[leftOrTop], this.numPositions[leftOrTop], this.offset[leftOrTop], this.cycleAtEnd) * -1);
         }
         else {
-            console.log(this.current[leftOrTop]);
             return slideFunctions.getEndTopOrLeft(directionOrPosition, this.current[leftOrTop], this.slideWidth[leftOrTop], this.numPositions[leftOrTop], this.offset[leftOrTop], this.cycleAtEnd);
         }
         
@@ -129,7 +131,6 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
                 newPos = self.end[leftOrTop] - self.current[leftOrTop] > 0 ? self.current[leftOrTop] + 1 : self.current[leftOrTop] - 1;
             }
         }
-        console.log(self.current[leftOrTop]);
         return newPos;
     }
 
@@ -167,7 +168,7 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
             if (self.moveMethod == "scroll") {
                 self.slider.parentNode.style[overflowDir] = "hidden";
             }
-            self.slideMe("reset");
+            self.slideMe("reset",leftOrTop);
         })
     }
 
@@ -179,17 +180,14 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
         else {
             self.slider.style[leftOrTop] = newPos + "px";
         }
-        console.log(self.slider.style[leftOrTop]);
         self.current[leftOrTop] = newPos;
     }
 
     this.slideMe = function(directionOrPosition, leftOrTop) {
         leftOrTop = this.fixFormat(leftOrTop);
-        console.log(this.current[leftOrTop]);
         this.current[leftOrTop] = this.getCurrentPos(leftOrTop);
         this.end[leftOrTop] = this.getEndPos(directionOrPosition, leftOrTop);
-console.log(this.end[leftOrTop])
-        slideFunctions.animate(function() {self.eachFrame(leftOrTop); });
+        slideFunctions.animate(function() {return self.eachFrame(leftOrTop); });
     }
 
     this.verifyProps = function(leftOrTop) {
