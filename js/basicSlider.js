@@ -34,7 +34,7 @@
 *      `getNewPos(leftOrTop)` - returns location for position of next frame in the animation, ie, if moving from 0 to -100, returns `-10`, `-19`,
 *           `-27.1`, etc when `fraction` is `.1`; logic depends on `object.moveMethod`
 *      `setNewPos(leftOrTop, newPos)` - moves slider to next position (`newPos`), updates `object.current.Left/Top`; logic depends on `object.moveMethod`.  
-*      `slideFunctions.animate(function() {self.eachFrame(leftOrTop); })` - example of calling the actual animation where `self.eachFrame` is the method 
+*      `slideFunctions.animate(function() {return self.eachFrame(leftOrTop); })` - example of calling the actual animation where `self.eachFrame` is the method 
 *            that runs the logic for each frame in the animation.
 *
 *    Requires myFuncs.js and slideFunctions.js 
@@ -69,6 +69,7 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
     var firstSlide = true;
     var self = this;
 
+    myFuncs.makeCompatible();
     myFuncs.resizeWindowFunc(function() {self.resetSizes(self); });
 
     if (this.moveMethod != "scroll" && this.moveMethod != "offset") {
