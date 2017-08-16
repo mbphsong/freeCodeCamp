@@ -80,6 +80,9 @@ function imageSlider(sliderContainer, fraction, scrollOrOffset) {
     if (bSlider.moveMethod == "scroll") {
         bSlider.setScrollTouchEvents("left",function() {self.playPause("pause"); })
     }
+    else {
+        this.slider.parentNode.style.overflowX = "hidden";
+    }
 
     //imageSlider methods
     this.autoSlide = function (autoSlideDelay) {

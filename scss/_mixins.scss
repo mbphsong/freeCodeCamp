@@ -1,0 +1,147 @@
+@mixin calcLineHeight($fallback, $calc) {
+	@include allCalcs(line-height, $fallback, $calc);
+}
+
+@mixin calcMaxWidth($fallback, $calc) {
+	@include allCalcs(max-width, $fallback, $calc);
+}
+
+@mixin calcMarginRight($fallback, $calc) {
+	@include allCalcs(margin-right, $fallback, $calc);
+}
+
+@mixin calcWidth($fallback, $calc) {
+	@include allCalcs(width, $fallback, $calc);
+}
+
+@mixin allCalcs($property, $fallback, $calc) {
+	$calc: unquote($calc);
+	#{$property}: $fallback;
+	#{$property}: -webkit-calc(#{$calc});
+	#{$property}: -moz-calc(#{$calc});
+	#{$property}: calc(#{$calc});
+}
+
+@mixin contentWidth($numCols, $minScreenWidth: $max-container-width) {
+	//calculates the maximum % width .content can be for a given minimum screen width in the event browser doesn't recognize calc()
+	@if (type-of($numCols) == number and unit($minScreenWidth) == unit($sidebar-width)) {
+		$sidebarSize: ($numCols - 1) * ($sidebar-width + 2); // The +2 allows for 2px worth of borders on each sidebar
+		$maxContentWidth: $minScreenWidth - $sidebarSize;
+		$defaultWidth: percentage($maxContentWidth / $minScreenWidth);
+		@if ($max-container-width == $minScreenWidth) {
+			//only set the width to fit properly
+			width: $defaultWidth;
+		}
+		@else {
+			//screen can get larger from here, set the calc widths
+			@include calcWidth($defaultWidth, '100% - #{$sidebar-width + 2}');
+		}
+	}
+	@else {
+		@if (type-of($numCols) != number) {
+			@warn "The `contentWidth()` mixin requires an integer value for the $numcols variable.  `#{$numCols}` is invalid, and your CSS has not been printed.";
+		}
+		@if (unit($minScreenWidth) != unit($sidebar-width)) {
+			@warn "The `contentWidth()` mixin must have the same units for $minScreenWidth as $sidebar-width.  $minScreenWidth: `#{$minScreenWidth}` and $sidebarWidth: `#{$sidebar-width}`";
+		}
+	}
+}
+
+@mixin navBorders($hover: false) {
+	/*send true to set the borders for hovering */
+	$lighter: 1px solid lighten($primary-color, 85%); /* this creates the button separation */
+	$darker: 1px solid lighten($primary-color, 15%);
+	
+	@if ($hover == false) {
+		border-bottom: $darker; 
+		border-top: $lighter;
+	}
+	@else {
+		border-top: $darker;
+		border-bottom: $lighter;
+	}
+}
+
+@mixin noBorders($sides: all) {
+	$noBorder: 0px solid #ffffff;
+	
+	@if ($sides == all) {
+		border: $noBorder;
+	}
+	@else {
+		@include setBorders($noBorder, $sides);
+	}	
+}
+
+@mixin noPadMarg($media: false) {
+	/* send true to not extend */
+	@if ($media == false) {
+		@extend %noPadMarg;
+	}
+	@else {
+		padding: 0;
+		margin: 0;
+	}
+}
+
+@mixin setNoPadMarg($sides: all, $media: false) {
+	$sideNames: top right bottom left;
+	@if ($sides == all) {
+		@include noPadMarg($media);
+	}
+	@else {
+		@each $side in $sideNames {
+			$i: index($sides, $side);
+			
+			@if ( $i ) {
+				//set the border for this side
+				padding-#{$side}: 0;
+				margin-#{$side}: 0;
+			}
+		}
+	}
+}
+
+@mixin setBorders($style, $sides) {
+	/*$sides should be a list of all sides to have the border - just spaces between */
+	$sideNames: top right bottom left;
+	
+	@each $side in $sideNames {
+		$i: index($sides, $side);
+		
+		@if ( $i ) {
+			//set the border for this side
+			border-#{$side}: $style;
+		}
+	}
+}
+
+@mixin setPositionStuff($position, $args) {
+	//got these from hugogiraudel.com
+	//set offsets for position - call like setPositionStuff(absolute, top 5 left 4);
+	$offsets: top right bottom left;
+	
+	@each $offset in $offsets {
+		$i: index($args, $offset);
+		
+		@if( $i	and $i + 1 <= length($args)	and type-of( nth($args, $i + 1) ) == number ) {
+			#{$offset}: nth($args, $i + 1);
+		}
+	}
+	
+	position: $position;	
+}
+
+@mixin absolute($args) {
+	@include setPositionStuff(absolute, $args);
+}
+
+@mixin fixed($args) {
+	@include setPositionStuff(fixed, $args);
+}
+
+@mixin relative($args) {
+	@include setPositionStuff(relative, $args);	
+}
+
+
