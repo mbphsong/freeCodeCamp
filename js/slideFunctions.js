@@ -20,7 +20,6 @@ var slideFunctions = {
             currPosition = Math.min(currPosition,numberPositions - 1);
         }
         var endPosition;
-        var farthestSlide = (numberPositions - 1) * positionWidth * -1;
         switch(slideToPosition) {
             case "reset":
                 console.log("position: " +  slideToPosition);
