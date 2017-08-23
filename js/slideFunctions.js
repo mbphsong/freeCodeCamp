@@ -12,7 +12,13 @@ var slideFunctions = {
     },
     getEndTopOrLeft: function(slideToPosition, currentLeft,positionWidth,numberPositions, offset,cycleAtEnd) {
         currentLeft = currentLeft - offset;
-        var currPosition = Math.abs(Math.round(currentLeft/positionWidth));
+        var currPosition = Math.round(currentLeft/positionWidth) * -1;
+        if (currPosition < 0) {
+            currPosition = 0;
+        }
+        else {
+            currPosition = Math.min(currPosition,numberPositions - 1);
+        }
         var endPosition;
         var farthestSlide = (numberPositions - 1) * positionWidth * -1;
         switch(slideToPosition) {
