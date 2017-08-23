@@ -22,7 +22,7 @@ function setMobileNav() {
 				if (thisLink.slide) {
 
 					var sideOfPage = thisLink.classList.contains("left-side") ? "left" : "right";
-					thisLink.slider = new menuSlider(thisLink,sideOfPage,.13);
+					thisLink.slider = menuSlider(thisLink,sideOfPage,.13);
 				}
 
 				this.setEvents(thisLink);
@@ -31,8 +31,8 @@ function setMobileNav() {
         setEvents: function(thisLink) {
 			var self = this;
 			if (thisLink.slide) {
-				thisLink.onclick = function() {
-					this.slider.slideMe("left");
+				thisLink.slider.menuButton.slider.onclick = function() {
+					this.slideMe("left");
 				}
 			}
 			else {
@@ -52,33 +52,30 @@ function setMobileNav() {
 }
 
 function menuSlider(menuContainer, sideOfPage, speedFraction) {
-	this.container = menuContainer;
+	var container = menuContainer;
 	//set up menu object
-	this.menu = new basicSlider(speedFraction, "offset",true);
-	this.menu.slider = this.container.querySelector(".slider");
-	this.menu.slideWidth.Left = this.menu.slider.offsetWidth;
-	this.menu.numPositions.Left = 2;
+	var menu = new basicSlider(speedFraction, "offset",true);
+	menu.slider = container.querySelector(".slider");
+	menu.numPositions.Left = 2;
 	//set up menuButton object
-	this.menuButton = new basicSlider(speedFraction,"offset",true);
-	this.menuButton.slider = this.container.querySelector(".menu-button");
-	this.menuButton.slideWidth.Left = this.menu.slideWidth.Left;
-	this.menuButton.numPositions.Left = 2;
+	menu.menuButton = new basicSlider(speedFraction,"offset",true);
+	menu.menuButton.slider = container.querySelector(".menu-button");
+	menu.menuButton.numPositions.Left = 2;
 
 	var slideDir;
 	var startPos;
 	var stopPos;
 	var moving = false;
-	var self = this;
+	// var self = this;
 
-
-	this.eachFrame = function() {
+	menu.eachFrame = function() {
 		//determine whether or not the menu should still be moving
-		if (this.menu.current.Left != this.menu.end.Left) {
+		if (this.current.Left != this.end.Left) {
 			//menu is not lined up with end yet; move another frame
-			var newPos = this.menu.getNewPos("left");
+			var newPos = this.getNewPos("left");
 
-			if ((startPos <= this.menu.current.Left && this.menu.current.Left <= stopPos) || 
-			(stopPos <= this.menu.current.Left && this.menu.current.Left <= startPos)) {
+			if ((startPos <= this.current.Left && this.current.Left <= stopPos) || 
+			(stopPos <= this.current.Left && this.current.Left <= startPos)) {
 				//menu is within the range that menuButton should be moving
 				//set `moving` to true so we know when we are out of range
 				moving = true;
@@ -93,7 +90,7 @@ function menuSlider(menuContainer, sideOfPage, speedFraction) {
 				this.menuButton.setNewPos("left",stopPos + this.menuButton.slideOffset);
 			}
 			//move menu to position for this frame
-			this.menu.setNewPos("left",newPos);
+			this.setNewPos("left",newPos);
 			//return `true` to the animation method - run again!
 			return true;
 		}
@@ -103,37 +100,72 @@ function menuSlider(menuContainer, sideOfPage, speedFraction) {
 				//if closed, reset border-styling
 				this.menuButton.slider.classList.remove("moving");
 			}
+			if (moving) {
+				//edge case of menu not moving between startPos & stopPos,
+				//ie right side on original slideMe(0)
+				moving = false;
+				//set menuButton to where it should stop (menu left position plus slideOffset)
+				this.menuButton.setNewPos("left",stopPos + this.menuButton.slideOffset);
+			}
 			//return `false` to the animation method - we're done moving
 			return false;
 		}
 	}
 
-	this.setOffsets = function() {
+	menu.menuButton.resetSizes = function(menu) {
+		//do nothing
+		// console.log("in mB resetSize");
+	}
+	
+	menu.resetSizes = function(menu) {
+		// console.log("in menu resetSizes");
+		menu.setWidths();
+		menu.setOffsets();
+		//slide it offscreen - that way we don't have to worry about whether open or closed
+		if (sideOfPage == "right") {
+			menu.slideMe(0);
+		}
+		else {
+			menu.slideMe(1);
+		}
+	}
+
+	menu.setWidths = function() {
+		menu.slideWidth.Left = menu.slider.offsetWidth;
+		menu.menuButton.slideWidth.Left = menu.slideWidth.Left;
+	}
+
+	menu.setOffsets = function() {
 		//set offset for getEndPos - if on the right side of the page, we offset the width of the menuButton; 
 		//left side, we offset the width of the menu.  This is to keep menuButton visible when menu is offscreen
-		this.menuButton.offset.Left = sideOfPage == "right" ? this.menuButton.slider.offsetWidth * -1 : this.menu.slideWidth.Left;
+		this.menuButton.offset.Left = sideOfPage == "right" ? this.menuButton.slider.offsetWidth * -1 : this.slideWidth.Left;
 		//set the amount we add to the `newPos` for the menu to get the newPos for menuButton while sliding
 		//right side, it should be lined up on the left, so same left position; left side, it should be lined up on the
 		//right, so the menu width less the menuButton width
-		this.menuButton.slideOffset = sideOfPage == "right" ? 3 : this.menu.slideWidth.Left - this.menuButton.slider.offsetWidth + 3;
+		this.menuButton.slideOffset = sideOfPage == "right" ? 3 : this.slideWidth.Left - (this.menuButton.slider.offsetWidth + 3);
 	}
 
-	this.slideMe = function(directionOrPosition)  {
-		if (directionOrPosition == "reset") {
-			//reset offsets for menuButton before running getEndPos
-			this.setOffsets();
-		}
-		this.menu.current.Left = this.menu.getCurrentPos("left");
-		this.menu.end.Left = this.menu.getEndPos(directionOrPosition,"left");
+	menu.menuButton.slider.slideMe = function(directionOrPosition) {
+		menu.slideMe(directionOrPosition);
+	}
+
+	menu.slideMe = function(directionOrPosition)  {
+		this.current.Left = this.getCurrentPos("left");
+		this.end.Left = this.getEndPos(directionOrPosition,"left");
 		this.menuButton.current.Left = this.menuButton.getCurrentPos("left");
 		this.menuButton.end.Left = this.menuButton.getEndPos(directionOrPosition,"left");
 
-		slideDir = this.menu.end.Left < this.menu.current.Left ? "left" : "right";
+		if (isNaN(directionOrPosition)) {
+			slideDir = this.end.Left < this.current.Left ? "left" : "right";
+		}
+		else {
+			slideDir = directionOrPosition == 0 ? "right" : "left";
+		}
 
 		//set at what "current" menu position the menuButton should be sliding
 		if (slideDir == sideOfPage) {
 			//if sliding offscreen, start moving immediately
-			startPos = this.menu.current.Left;
+			startPos = this.current.Left;
 			//stop moving when menuButton has reached its end position (menuButton end left position
 			//less the distance it keeps from the menu left position while sliding)
 			stopPos = this.menuButton.end.Left - this.menuButton.slideOffset;
@@ -144,22 +176,15 @@ function menuSlider(menuContainer, sideOfPage, speedFraction) {
 			//left position while sliding
 			startPos = this.menuButton.current.Left - this.menuButton.slideOffset;
 			//stop when menu stops - don't want to slide past
-			stopPos = this.menu.end.Left;
+			stopPos = this.end.Left;
 		}
 		//add class `moving` for purposes of border-styling
 		this.menuButton.slider.classList.add("moving");
-		slideFunctions.animate(function() {return self.eachFrame(); });
+		slideFunctions.animate(function() {return menu.eachFrame(); });
 	}
 
-	//set our offset numbers (in function so that we can reset them on a screen-size change)
-	this.setOffsets();
+	//set our widths and offset numbers (in function so that we can reset them on a screen-size change)
+	menu.resetSizes(menu);
 
-	//make sure aligned at the edge of the page to start so not visible and doesn't
-	//take longer to appear the first time it is called for
-	if (sideOfPage == "right") {
-		this.slideMe(0);
-	}
-	else {
-		this.slideMe(1);
-	}
+	return menu;
 }
