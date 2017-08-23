@@ -223,6 +223,11 @@ body {
 					right: auto;
 				}
 			}
+
+			.menu-button {
+				left: 0;
+				right: auto;
+			}
 		}
 		
 		
@@ -249,9 +254,11 @@ body {
 				border: 1px outset $MN-border-color;
 				z-index: 1000;
 				display:block;
+				position: absolute;
+				right:0;
 				
 				+ .slider {
-					padding-top: 0px;	
+					padding-top: 50px;	
 					margin-top:0px;				
 				}
 				
@@ -263,7 +270,7 @@ body {
 					+ .slider {
 						/*position:relative;
 						top: 25px;*/
-						padding-top: 50px;
+						// padding-top: 50px;
 						border: 1px outset $MN-border-color;
 					}
 				}

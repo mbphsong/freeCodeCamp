@@ -119,7 +119,7 @@ var myFuncs = {
 		window.onresize = function() { 
 			clearTimeout(resizeTimer);
 			resizeTimer = setTimeout(function() {
-				fLog("in myFunc resize");
+				// fLog("in myFunc resize");
 					func();	
 	
 				if (typeof oldResize === 'function') {

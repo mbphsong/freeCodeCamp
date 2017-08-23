@@ -179,7 +179,7 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
             self.slider.parentNode["scroll" + leftOrTop] = newPos;
         }
         else {
-            self.slider.style[leftOrTop] = newPos + "px";
+            self.slider.style[leftOrTop.toLowerCase()] = newPos + "px";
         }
         self.current[leftOrTop] = newPos;
     }
