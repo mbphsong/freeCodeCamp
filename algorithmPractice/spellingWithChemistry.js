@@ -107,8 +107,8 @@ var ELEMENTS = {
 }
 
 function mapItem() {
-    this.elements = [];
-    this.symbols = [];
+    this.elements = "";
+    this.symbols = "";
     this.weight = 0;
 }
 
@@ -119,11 +119,14 @@ function spellWithChemistry(word) {
     options.sort((a,b) => b.weight - a.weight);
     var list = "";
     options.forEach(function(mapItem) {
-        console.log(mapItem.symbols.join("").toUpperCase());
-        if (mapItem.symbols.join("").toUpperCase() == word.toUpperCase()) {
-            list += `${mapItem.symbols.join("")} (${mapItem.elements.join(", ")}), weight: ${mapItem.weight}\n`;
+        console.log(mapItem.symbols.toUpperCase());
+        if (mapItem.symbols.toUpperCase() == word.toUpperCase()) {
+            list += `${mapItem.symbols} (${mapItem.elements}), weight: ${mapItem.weight}\n`;
         }
     });
+    if (list.length == 0) {
+        list = "This word cannot be spelled with chemistry";
+    }
     console.log(options);
     return list;
 }
@@ -157,7 +160,7 @@ function spellWord(word,nthLetter,map) {
                 thisLevel =  map[key];
                 return;
             }
-
+            var subLevel = [];
             if (ELEMENTS[symbol] == undefined) {
                 var newItem = new mapItem();
                 var endLevel = [];
@@ -171,15 +174,16 @@ function spellWord(word,nthLetter,map) {
             if (oneChar != undefined) {
                 console.log(nthLetter-symbol.length);
                 oneChar.forEach(function(mapItem) {
-                console.log(mapItem);
-                var path = addPath(mapItem,symbol);
-                console.log(path);
-                thisLevel.push(path);
-            });
-        }
+                    console.log(mapItem);
+                    var path = addPath(mapItem,symbol);
+                    console.log(path);
+                    subLevel.push(path);
+                    thisLevel.push(path);
+                });
+            }
 
         console.log(map);
-        map[key] = thisLevel.slice();
+        map[key] = subLevel.slice();
         return;
 
     }, this);
@@ -189,13 +193,13 @@ function spellWord(word,nthLetter,map) {
 
 function addPath(currPath,symbol) {
     var newItem = new mapItem();
-    newItem.elements = currPath.elements.concat(ELEMENTS[symbol].element);
+    newItem.elements = currPath.elements.length == "" ? ELEMENTS[symbol].element : currPath.elements + `, ${ELEMENTS[symbol].element}`;
     console.log(currPath.elements);
     console.log(newItem.elements)
-    newItem.symbols = currPath.symbols.concat(symbol);
+    newItem.symbols = currPath.symbols + symbol;
     newItem.weight = currPath.weight + ELEMENTS[symbol].atomicWeight;
     console.log(newItem);
     return newItem;
 }
 
-console.log(spellWithChemistry("BAcon"));
+console.log(spellWithChemistry("sickness"));
