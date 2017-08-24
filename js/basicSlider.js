@@ -156,7 +156,7 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
         var overflowDir = leftOrTop == "Left" ? "overflowX" : "overflowY";
         this.slider.addEventListener("touchstart",function(e) {
             if (typeof touchStartCallback === "function") {
-                touchStartCallback;
+                touchStartCallback();
             }
             if (self.moveMethod == "scroll") {
                 self.slider.parentNode.style[overflowDir] = "scroll";
@@ -164,7 +164,7 @@ function basicSlider(fraction, scrollOrOffset, cycleAtEnd) {
         });
         this.slider.addEventListener("touchend",function(e) {
             if (typeof touchEndCallback === "function") {
-                touchEndCallback;
+                touchEndCallback();
             }
             if (self.moveMethod == "scroll") {
                 self.slider.parentNode.style[overflowDir] = "hidden";
