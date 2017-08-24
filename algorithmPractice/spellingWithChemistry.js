@@ -1,4 +1,4 @@
-var elements = {
+var ELEMENTS = {
     Ac: {element: 'Actinium', atomicNumber: 89, atomicWeight: 227, electroNegatives: 1.1,},
     Al: {element: 'Aluminum', atomicNumber: 13, atomicWeight: 26.9815, electroNegatives: 1.5,},
     Am: {element: 'Americium', atomicNumber: 95, atomicWeight: 243, electroNegatives: 1.3,},
@@ -115,74 +115,87 @@ function mapItem() {
 function spellWithChemistry(word) {
     var map = {};
 
-    var maxWeight = findMaxWeight(word,word.length,map);
-    console.log(map);
-    return `${maxWeight.symbols.join("")} (${maxWeight.elements.join(", ")}, weight: ${maxWeight.weight}`;
-    
-    function findMaxWeight(word,nthLetter,map) {
-        if (nthLetter <= 0) {
-            return new mapItem();
+    var options = spellWord(word,word.length,map);
+    options.sort((a,b) => b.weight - a.weight);
+    var list = "";
+    options.forEach(function(mapItem) {
+        console.log(mapItem.symbols.join("").toUpperCase());
+        if (mapItem.symbols.join("").toUpperCase() == word.toUpperCase()) {
+            list += `${mapItem.symbols.join("")} (${mapItem.elements.join(", ")}), weight: ${mapItem.weight}\n`;
         }
-
-        var key = `l${nthLetter}`;
-        
-        console.log(key);
-        if (map[key]) {
-            console.log(key);
-            return map[key];
-        }
-
-        var singleLetter = word.substr(nthLetter-1,1).toUpperCase();
-        var doubleLetter;
-        if (nthLetter >1) {
-            doubleLetter = word.substr(nthLetter-2,1).toUpperCase() + word.substr(nthLetter-1,1);
-        }
-        else {
-            doubleLetter = "";
-        }
-
-        singlePath = elements[singleLetter] != undefined ? findMaxWeight(word,nthLetter-1,map) : new mapItem();
-        doublePath = elements[doubleLetter] != undefined ? findMaxWeight(word,nthLetter-2,map) : new mapItem();
-        console.log(`${nthLetter} ${singleLetter} ${singlePath.weight}`);
-        console.log(`${nthLetter} ${doubleLetter} ${doublePath.weight}`);
-    
-        singleElement = elements[singleLetter] || {atomicWeight: 0};
-        doubleElement = elements[doubleLetter] || {atomicWeight: 0};
-
-        if (doubleElement.atomicWeight == 0 && singleElement.atomicWeight == 0) {
-            console.log(nthLetter);
-            var cancelPath = new mapItem();
-            cancelPath.weight = -1000;
-            console.log(cancelPath);
-            map[key] = cancelPath;
-            return map[key];
-        }
-        
-        var maxWeight;
-        if (singlePath.weight + singleElement.atomicWeight > doublePath.weight + doubleElement.atomicWeight) {
-            maxWeight = setMax(map,key,singlePath,singleLetter);
-
-        }
-        else {
-            maxWeight = setMax(map,key,doublePath,doubleLetter);
-        }
-        
-        return maxWeight;
-
-        function setMax(map,key,bestPath,symbol) {
-            var newItem = new mapItem();
-            newItem.elements = bestPath.elements.concat(elements[symbol].element);
-            newItem.symbols = bestPath.symbols.concat(symbol);
-            newItem.weight = bestPath.weight + elements[symbol].atomicWeight;
-            map[key] = newItem;
-            console.log(key);
-            console.log(map);
-            return newItem;
-        }
-    }
+    });
+    console.log(options);
+    return list;
 }
 
+function getSymbol(numChars,word, nthLetter) {
+    console.log(nthLetter)
+    symbol = word.substr(nthLetter-numChars,numChars);
+    symbol = symbol.charAt(0).toUpperCase() + symbol.charAt(1).toLowerCase();
+    console.log(symbol);
+    return symbol;
+}
+    
+function spellWord(word,nthLetter,map) {
+    if (nthLetter <= 0) {
+        var endLevel = [];
+        endLevel[0] = new mapItem();
+        console.log(endLevel);
+        return endLevel;
+    }
 
+    var thisLevel = [];
+    [1, 2]
+        .filter((numChars) => nthLetter - numChars >=0)
+        .map(numChars => getSymbol(numChars,word, nthLetter))
+        .forEach(function(symbol) {
+            var key = `l${nthLetter}sym${symbol}`;
+            
+            console.log(key);
+            if (map[key]) {
+                console.log(key);
+                thisLevel =  map[key];
+                return;
+            }
 
+            if (ELEMENTS[symbol] == undefined) {
+                var newItem = new mapItem();
+                var endLevel = [];
+                endLevel[0] = newItem;
+                map[key] = endLevel;
+                console.log(symbol);
+                return map[key];
+            }
+            var oneChar = spellWord(word,nthLetter-symbol.length,map);
 
-console.log(spellWithChemistry("functions"));
+            if (oneChar != undefined) {
+                console.log(nthLetter-symbol.length);
+                oneChar.forEach(function(mapItem) {
+                console.log(mapItem);
+                var path = addPath(mapItem,symbol);
+                console.log(path);
+                thisLevel.push(path);
+            });
+        }
+
+        console.log(map);
+        map[key] = thisLevel.slice();
+        return;
+
+    }, this);
+        
+    return thisLevel;
+}
+
+function addPath(currPath,symbol) {
+    var newItem = new mapItem();
+    newItem.elements = currPath.elements.concat(ELEMENTS[symbol].element);
+    console.log(currPath.elements);
+    console.log(newItem.elements)
+    newItem.symbols = currPath.symbols.concat(symbol);
+    newItem.weight = currPath.weight + ELEMENTS[symbol].atomicWeight;
+    console.log(newItem);
+    return newItem;
+}
+
+console.log(spellWithChemistry("BAcon"));
