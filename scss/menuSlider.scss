@@ -50,6 +50,7 @@ $MN-link-color: $font-color;
 body {
 	position: relative;
 	@include noPadMarg();
+	overflow:hidden;
 }
 
 .mobile-nav {
@@ -300,15 +301,9 @@ body {
 			display:none;
 
 			+ ul {
-				// transform: translateY(-100%);
-				// visibility: hidden;
-				// z-index: -1;
-				// transition: transform .5s ease, visibility .5s ease;
-				// right: 0;
 				opacity: 0;
 				visibility: hidden;
 				transition: opacity .8s ease, visibility .8s ease;
-				// top: 0;
 			}
 
 			&:checked {
@@ -316,15 +311,6 @@ body {
 					opacity: 1;
 					visibility: visible;
 				}
-			}
-		}
-		li {
-			&:hover {
-				> ul {
-					opacity: 1;
-					visibility: visible;
-				}
-			
 			}
 		}
 	}
@@ -352,6 +338,10 @@ body {
 
 .testing {
 	@media only screen and (min-width: $tablet-width + 1) {
+		position: relative;
+		overflow: hidden;
+		min-height: 100vh;
+		
 		.left-side {
 			top: 100px;
 		}
