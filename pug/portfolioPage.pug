@@ -1,0 +1,86 @@
+- var numSlides = 3
+- var slides = [ {"src": "http://res.cloudinary.com/phdigital/image/upload/v1503967812/copier-master_j8grqa.jpg", "head": "VBA Overview"}, {"src": "http://res.cloudinary.com/phdigital/image/upload/v1503967813/aw-service-map_r03yuf.jpg", "head": "Interactive map"}, {"src": "http://res.cloudinary.com/phdigital/image/upload/v1503967813/aw-dropdown_slaoxh.jpg", "head": "Mobile form and custom drop-down"} ]
+            
+            
+mixin links(link, text)
+    li
+        a(href=link).btn.navbar-btn #{text}
+
+mixin fancyBorder()
+    .border-holder
+        span.up
+        span.down
+        span.glyphicon.glyphicon-leaf
+        span.down
+        span.up
+
+nav.navbar.navbar-fixed-top
+    .container-fluid
+        .navbar-header
+            img(src="http://res.cloudinary.com/phdigital/image/upload/v1501188357/logo_loiv5e.jpg").nav-img
+            button.navbar-toggle(data-toggle="collapse" data-target="#myNavbar")
+                - for (var x = 0; x<3; x++)
+                    span.icon-bar
+        .collapse.navbar-collapse(id="myNavbar")
+            ul.nav.navbar-nav.navbar-right
+                +links("#About","About")
+                +links("#Portfolio","Portfolio")
+                +links("#Contact","Contact")
+
+.container-fluid.under-fixed
+    .panel-group
+        .panel.panel-default.show-through
+            .panel-heading.show-through(id="About")
+                div
+                    .profile
+                        img.img-responsive(src="http://res.cloudinary.com/phdigital/image/upload/v1501188350/profilePic_pte1p6.png")
+                    p Since 2011, I have been teaching myself programming.  Originally, I was proving a point, but I fell in love with scripting!
+                    p My preferred scripting language is JavaScript, although I also work with PHP to interact with servers and have dabbled in ASP.net and C#.  When working with CSS, I have begun using SASS as a preprocessor.  I also recently added the Pug HTML preprocessor to my bag of tricks, which makes my code so much cleaner and easier to read!
+                    p Of course, that is only the web side of my programming.  I also create complex Excel spreadsheets with advanced formulas and VBA macros.  If you need data manipulated in Excel, look me up!
+            .panel-body.show-through(id="Portfolio")
+                h2 Portfolio
+                +fancyBorder()
+                .carousel.slide(data-ride="carousel" id="myCarousel")
+                    ol.carousel-indicators
+                        - for (var y = 0; y < numSlides; y++)
+                            li(data-target="#myCarousel" data-slide-to=y class= y == 0 ? "active" : "")
+                    .carousel-inner(role="listbox")
+                        for slide, index in slides
+                            div(class=index == 0 ? "item active" : "item")
+                                img(src=slide.src alt=slide.head)
+                                .carousel-caption
+                                    h3 #{slide.head}
+                    a.left.carousel-control(href="#myCarousel" role="Button" data-slide="prev")
+                        span.glyphicon.glyphicon-chevron-left(aria-hidden="true")
+                        span.sr-only Previous
+                    a.right.carousel-control(href="#myCarousel" role="Button" data-slide="next")
+                        span.glyphicon.glyphicon-chevron-right(aria-hidden="true")
+                        span.sr-only Next
+            .panel-footer.show-through(id="Contact")
+                h2 Contact Me
+                +fancyBorder()
+                p Want to drop me a line?  Feel free to visit me on social media and let me know!  I'll get back to you soon.
+                .social-media
+                    .social-link
+                        a(href="https://www.linkedin.com/in/erin-halbmaier-18273b129/" target="_blank")
+                            i.fa.fa-linkedin
+                    .social-link
+                        a(href="https://www.upwork.com/o/profiles/users/_~01952c6087c859e142/" target="_blank")
+                            i.fa.icon-upwork
+                    .social-link
+                        a(href="https://www.freecodecamp.org/mbphsong" target="_blank")
+                            i.fa.fa-free-code-camp
+                    .social-link
+                        a(href="https://stackoverflow.com/users/1134623/erin-halbmaier" target="_blank")
+                            i.fa.fa-stack-overflow
+                    .social-link
+                        a(href="https://github.com/mbphsong" target="_blank")
+                            i.fa.fa-github
+                    .social-link
+                        a(href="https://www.guru.com/freelancers/phdigital" target="_blank")
+                            i.fa.icon-guru
+.footer
+    p Created by #[a(href="https://codepen.io/erinhalbmaier" target="_blank") Erin Halbmaier] using Bootstrap, FontAwesome, and jQuery.  
+    p HTML preprocessor: Pug
+    p CSS preprocessor: SCSS
+    p &copy; 2017 Erin Halbmaier
