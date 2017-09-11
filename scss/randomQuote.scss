@@ -1,0 +1,100 @@
+$bg-color: #ABCFEF;
+
+.container-fluid {
+    background-color: $bg-color;
+    min-height: 500px;
+    min-height: 100vh;
+    position: relative;
+}
+
+.holder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+
+    p.copy {
+        text-align: center;
+        font-family: "Times New Roman", Georgia, serif;
+        color: #ffffff;
+
+        a {
+            color: #ffffff;
+            border-bottom: 1px solid #ffffff;
+
+            &:hover {
+                text-decoration: none;
+                border-bottom-width: 0px;
+            }
+        }
+    }
+}
+
+blockquote {
+    font-size: 1.5em;
+    border-left:none;
+    background-color: #ffffff;
+    color: $bg-color;
+    font-family: "Times New Roman", Georgia, serif;
+    width: 500px;
+    max-width: 90vw;
+    padding: 10px;
+
+    &.quote-box {
+      box-shadow: 4px 4px 2px darken($bg-color,10%);
+      border-radius: 10px;
+    }
+    p {
+        &.quotation-mark{
+          font-size: 5em; 
+          margin-top: -.2em;
+          
+        }
+        &.quote-text {
+          margin-top: -4em;
+          padding-left: 2em;
+        }
+        &.quotee {
+          font-style:italic;
+          text-align: right;
+          padding-right: 1em;
+        }
+        &.quoteSource {
+            font-size: .8em;
+            display: none;
+        }
+    }
+
+    #newQuote {
+        cursor: pointer;
+    }
+
+    a {
+        color: $bg-color;
+        border-bottom: 1px solid $bg-color;
+
+        &:hover {
+            color: $bg-color;
+            text-decoration: none;
+            border-bottom-width: 0px;
+        }
+    }
+}
+
+.btn {
+    color: #ffffff;
+    background-color: $bg-color;
+    font-weight: bold;
+
+    a {
+        color: #ffffff;
+    }
+
+    &#tweet {
+        padding: 8px 0px;
+
+        a {
+            padding: 8px 12px;
+        }
+    }
+}
