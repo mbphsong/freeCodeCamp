@@ -1,7 +1,7 @@
 .container-fluid
     .scenic
     .weather-container
-        h1 Local Weather App
+        h1 Weather App
         .location
         .current-weather
             i.wi.wi-na
@@ -9,7 +9,17 @@
             .symbol &deg;
             .measurement F
         .conditions
+        .btn-group(id="locType")
+            button.btn.btn-secondary.active(type="button" id="local") Use Location
+            button.btn.btn-secondary(type="button" id="chooseLoc") Choose Location
+        form
+            .input-group(id="locInput")
+                input.form-control(type="text" placeholder="Zip code or City, State")
+                .input-group-btn
+                    button.btn.btn-default(type="submit") Go
         .btn-group(id="chooseMeas")
             button.btn.btn-primary(type="button" id="celsius") Celsius
             button.btn.btn-primary.active(type="button" id="fahrenheit") Fahrenheit
     p.copy By #[a(href="https://codepen.io/erinhalbmaier" target="_blank") Erin Halbmaier]
+    p.copy Weather data provided by NOAA station at 
+        span(id="station")

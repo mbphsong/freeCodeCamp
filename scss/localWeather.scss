@@ -41,6 +41,22 @@ $mobile-width: 480px;
             display: inline-block;
         }
     }
+
+    .input-group-btn {
+        button {
+            border-color: rgba(0,0,0,.15);
+        }
+    }
+
+    .input-group {
+        display:inline-flex;
+        width: 90%;
+        padding: .5em;
+    }
+
+    .btn {
+        cursor: pointer;
+    }
 }
 
 p.copy {
@@ -58,3 +74,7 @@ p.copy {
         }
     }
 }
+
+// #locInput {
+//     display:none;
+// }
