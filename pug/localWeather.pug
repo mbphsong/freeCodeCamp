@@ -1,25 +1,62 @@
+mixin forecastBody()
+    h5
+    div
+        img(src="", alt="")
+        p 
+            span.hiLo
+            span.temp
+            span.symbol &deg; 
+            span.measurement F
+            br
+            span.wind
+    div Forecast: 
+        span.short
+
 .container-fluid
     .scenic
     .weather-container
         h1 Weather App
         .location
-        .current-weather
-            i.wi.wi-na
-            .temp -- 
-            .symbol &deg;
-            .measurement F
-        .conditions
-        .btn-group(id="locType")
-            button.btn.btn-secondary.active(type="button" id="local") Use Location
-            button.btn.btn-secondary(type="button" id="chooseLoc") Choose Location
-        form
-            .input-group(id="locInput")
-                input.form-control(type="text" placeholder="Zip code or City, State")
-                .input-group-btn
-                    button.btn.btn-default(type="submit") Go
-        .btn-group(id="chooseMeas")
-            button.btn.btn-primary(type="button" id="celsius") Celsius
-            button.btn.btn-primary.active(type="button" id="fahrenheit") Fahrenheit
+        ul.nav.nav-tabs
+            li.active
+                a(data-toggle="tab" href="#current") Current
+            li
+                a(data-toggle="tab" href="#forecast") Forecast
+        .tab-content
+            .tab-pane.fade.in.active(id="current")
+                h1 Right Now
+                .current-weather
+                    i.wi.wi-na
+                    .temp -- 
+                    .symbol &deg;
+                    .measurement F
+                .conditions
+            .tab-pane.fade(id="forecast")
+                h1 7-day Forecast
+                .panel-group
+                    - for (var x = 0; x<7; x++)
+                        .panel.panel-default
+                            .panel-heading(id="day-" + x)
+                                h4.panel-title
+                                    a(data-toggle="collapse" href="#collapse-" + x) Day #{x}
+                        .panel-collapse.collapse(id="collapse-" + x)
+                            .panel-body.forecast.first
+                                +forecastBody
+                            .panel-body.forecast
+                                +forecastBody
+        .toggles
+            .btn-group(id="locType")
+                button.btn.btn-secondary.active(type="button" id="local") Use Location
+                button.btn.btn-secondary(type="button" id="chooseLoc") Choose Location
+            .location-error-message
+            form
+                .input-group(id="locInput")
+                    input.form-control(type="text" placeholder="Zip code or City, State")
+                    .input-group-btn
+                        button.btn.btn-default(type="submit") Go
+            .btn-group(id="chooseMeas")
+                button.btn.btn-primary(type="button" id="celsius") Celsius
+                button.btn.btn-primary.active(type="button" id="fahrenheit") Fahrenheit
     p.copy By #[a(href="https://codepen.io/erinhalbmaier" target="_blank") Erin Halbmaier]
     p.copy Weather data provided by NOAA station at 
         span(id="station")

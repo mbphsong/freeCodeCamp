@@ -22,7 +22,7 @@ $mobile-width: 480px;
     width: 50%;
     margin: 0 auto;
     text-align: center;
-    background-color: rgba(#cccccc,.3);
+    background-color: rgba(#cccccc,.7);
     font-size: 1.5em;
     padding-top: 2em;
     padding-bottom: 2em;
@@ -49,13 +49,15 @@ $mobile-width: 480px;
     }
 
     .input-group {
-        display:inline-flex;
-        width: 90%;
         padding: .5em;
     }
 
     .btn {
         cursor: pointer;
+    }
+
+    ul.nav-tabs > li a {
+        color: black;
     }
 }
 
@@ -75,6 +77,71 @@ p.copy {
     }
 }
 
-// #locInput {
-//     display:none;
-// }
+
+.toggles {
+    margin-top: 1em;
+
+    > div {
+        padding-top: .5em;
+    }
+}
+
+#forecast {
+
+    .panel-heading {
+        padding: 0;
+
+        a {
+            display: block;
+            padding: 10px 15px;
+
+            &:hover {
+                text-decoration: none;
+            }
+        }
+    }
+}
+
+.forecast {
+    padding-top: 0;
+    border-bottom: 1px solid #cccccc;
+
+    div {
+        line-height: 1.3em;
+        font-size: .8em;
+        text-align: left;
+        clear: left;
+    }
+
+    img {
+        height: 3em;
+        float: left;
+        padding-right: 1em;
+        margin-bottom: 1em;
+        // display: inline-block;
+    }
+
+    p {
+        padding-top: .25em;
+    }
+    
+}
+
+.measurement {
+    margin-left: -2px;
+}
+
+div.symbol {
+    margin-left: -2px;
+}
+
+.location-error-message {
+    &.alert {
+        &.alert-danger {
+            margin-top: .5em;
+            margin-bottom: .5em;
+            font-size: .75em;
+            padding-bottom: .5em;
+        }
+    }
+}
