@@ -93,6 +93,7 @@ $anim-timing2: cubic-bezier(0, 0.24, 0.78, 1.1);
     color: $font-color;
     border-radius: 5px 5px 0px 0px;
     margin-top: 1em;
+    max-width: 1000px;
     // border: 1px solid $dark;
 
     @media only screen and (max-width: $mobile-width) {
@@ -360,6 +361,7 @@ p {
         background-color: rgba($wrapper-bg,.7);
         margin: 0 auto;
         border-radius: 0px 0px 5px 5px;
+        max-width: 1000px;
 
         @media only screen and (max-width: $mobile-width) {
             width: 100%;
