@@ -1,0 +1,33 @@
+.container-fluid
+    .scenic
+        img(src="https://res.cloudinary.com/phdigital/image/upload/v1505851706/books-shelves-architecture-wood-442420-compressed_jnwtlx.jpg")
+    .wrapper
+        h1 Wikipedia Viewer
+        //Fidget Spinner icon by Icons8
+        button.btn.btn-info.grow(id="random") Random Article
+        p.random-alert
+        p.mid - or -
+        div
+            .search-i.grow
+                i.glyphicon.glyphicon-search
+        form
+            .input-group(id="searchWiki")
+                input.form-control.shrink(type="text" placeholder="Enter search term")
+                .input-group-btn
+                    button.btn.btn-default(type="submit")
+                        i.glyphicon.glyphicon-search
+            ul(id="suggestions")
+            .btn-group(id="numResults") 
+                p Results per page:
+                button.btn.btn-secondary.active(type="button" data-numResults=10) 10
+                button.btn.btn-secondary(type="button" data-numResults=30) 30
+                button.btn.btn-secondary(type="button" data-numResults=50) 50
+            .btn-group(id="paging") 
+                p Results #[span.firstRes 0] - #[span.lastRes 0] of #[span.totalRes 0]
+                button.btn.btn-warning(type="button" class="prev") Prev
+                button.btn.btn-warning(type="button" class="next") Next
+            div(id="results")
+                p.wikiSuggestions
+                ul
+    p.copy By #[a(href="https://codepen.io/erinhalbmaier" target="_blank") Erin Halbmaier]
+    p.copy Background picture from #[a(href="https://www.pexels.com" target="_blank") Pexels]

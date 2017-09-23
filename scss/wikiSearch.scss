@@ -1,0 +1,400 @@
+@import url('https://fonts.googleapis.com/css?family=Josefin+Sans');
+
+$mobile-width: 480px;
+$mobile-width-xs: 370px;
+$mid-width: 520px;
+$base: #ABCFEF;
+$copy-color: #ffffff;
+$font-color: #679AC8;
+$shadow-color: #305C84;
+$wrapper-bg: #281E00;
+$input-bg: #FFF2B9;
+$input-trans-length: 500ms;
+$input-delay: 1800ms;
+$header-font: "Josefin Sans";
+$anim-timing: cubic-bezier(0.57, 0, 0.85, .77);
+$anim-timing-flip: cubic-bezier(0.15, 0.33, 0.75, 1);
+$anim-timing2: cubic-bezier(0, 0.24, 0.78, 1.1);
+
+//these two mixins from joshbroton.com
+@mixin animation($animate...) {
+    $max: length($animate);
+    $animations: '';
+
+    @for $i from 1 through $max {
+        $animations: #{$animations + nth($animate, $i)};
+
+        @if $i < $max {
+            $animations: #{$animations + ", "};
+        }
+    }
+    -webkit-animation: $animations;
+    -moz-animation: $animations;
+    -o-animation: $animations;
+    animation: $animations;
+}
+
+@mixin keyframes($animationName) {
+    @-webkit-keyframes #{$animationName} {
+        @content;
+    }
+    @-moz-keyframes #{$animationName} {
+        @content;
+    }
+    @-o-keyframes #{$animationName} {
+        @content;
+    }
+    @keyframes #{$animationName} {
+        @content;
+    }
+    
+}
+
+.container-fluid {
+    position: relative;
+    min-height: 100vh;
+    padding:0;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    // background-color: $bg-color;
+}
+
+.scenic {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: fixed;
+    height: 100vh;
+    width: 200vw;
+    z-index: -1;
+    left: -50%;
+    top:0;
+    // background-image: url("https://static.pexels.com/photos/442420/books-shelves-architecture-wood-442420.jpeg");
+    // background-image: url("https://res.cloudinary.com/phdigital/image/upload/v1505851706/books-shelves-architecture-wood-442420-compressed_jnwtlx.jpg");
+    img {
+		height: 100%;
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		margin: auto;
+		min-width: 50%;
+		min-height: 50%;
+	}
+}
+
+.wrapper {
+    width: 75%;
+    margin: 0 auto;
+    text-align: center;
+    background-color: rgba($wrapper-bg,.7);
+    font-size: 1.5em;
+    padding: 2em 2em .5em 2em;
+    color: $font-color;
+    border-radius: 5px 5px 0px 0px;
+    margin-top: 1em;
+    // border: 1px solid $dark;
+
+    @media only screen and (max-width: $mobile-width) {
+        width: 100%;
+    }
+
+    h1 {
+        text-shadow: 1px 1px 1px $shadow-color;
+        margin-bottom: 1em;
+        font-family: $header-font;
+    }
+}
+
+ul {
+    list-style-type: none;
+    background-color: $input-bg;
+    font-size: .75em;
+    text-align: left;
+    padding: 0;
+
+    h5 {
+        font-weight: bold;
+    }
+
+    li {
+        border-bottom: 1px solid $font-color;
+        padding: 5px 10px;
+    }
+
+    a {
+        &:hover {
+            text-decoration: none;
+        }
+    }
+
+    &#suggestions {
+        padding-top: 1em;
+        margin-top: -1em;
+        width: 90%;
+        display:none;
+    }
+
+}
+
+.grow {
+    transform: scale(1);
+    transition: all 140ms linear;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+}
+
+.search-i {
+    margin-bottom: -1em;
+    display: inline-block;
+    
+    i {
+        border: 1px solid $font-color;
+        border-radius: 50%;
+        padding: .5em;
+        font-size: 1.5em;
+    }
+
+    &.jump {
+        @include animation('springUp 900ms ' + $anim-timing-flip + ' forwards', 'dropDown 1000ms 900ms ' + $anim-timing + ' forwards');
+
+        i {
+            @include animation('spin 200ms 5 ' + $anim-timing, 'spin 400ms 1000ms 3 ' + $anim-timing, 'spin 1000ms 2200ms 2 ' + $anim-timing);
+        }
+    }
+}
+
+@include keyframes(springUp) {
+    5% {
+        transform: translateY(50%);
+    }
+    100% {
+        transform: translateY(-500%);
+    }
+}
+
+@include keyframes(dropDown) {
+    0% {
+        transform: translateY(-500%);
+    }
+    100% {
+        visibility: hidden;
+        transform: translateY(20%) scale(.5);
+    }
+}
+
+@include keyframes(spin) {
+    0% { 
+        transform: rotateY(0deg);
+    }
+    50% {
+        transform: rotateY(180deg);
+    }
+    100% {
+        transform: rotateY(360deg);
+    }
+}
+
+@include keyframes(inputGrow) {
+    0% {
+        width: 0%;
+        padding: 0;
+    }
+    100% {
+        width: 100%;
+        padding: 6px 12px;
+    }
+}
+
+@include keyframes(growGroup) {
+    0% {
+        margin-left: 50%;
+        // transform: translateX(50%);
+        width: 0%;
+        visibility: visible;
+    }
+    100% {
+        // transform: translateX(0%);
+        margin-left: 0;
+        width: 90%;
+        visibility: visible;
+    }
+}
+
+form {
+    margin-top: -1em;
+}
+
+.input-group {
+    visibility: hidden;
+    margin-left: 50%;
+    width: 0%;
+    // transform: translateX(50%);
+    
+    input.shrink {
+        width: 0%;
+        padding: 0;
+        display:block;
+        background-color: $input-bg;
+    }
+    
+    &.spread {
+        @include animation("growGroup " + $input-trans-length + " " + $input-delay + " " + $anim-timing2 + " forwards");
+
+        input.shrink {
+            @include animation("inputGrow " + $input-trans-length + " " + $input-delay + " " + $anim-timing2 + " forwards");
+        }
+    }
+
+    .btn-default {
+        color: $font-color;
+    }
+
+    input {
+        border-color: $font-color;
+        border-radius: 15px;
+    }
+
+    .input-group-btn {
+        display: block;
+        
+        button {
+            border-color: $font-color;
+            border-radius: 15px;
+            background-color: $input-bg;
+        }
+    }
+}
+
+.btn-group {
+    min-width: 51%;
+
+    > p {
+        float: left;
+        padding-right: 1em;
+        font-size: .75em;
+        margin-top: .3em;
+
+        + .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+        }
+    }
+
+}
+
+#numResults {
+    opacity: 0;
+    margin-top: .3em;
+    height: 0;
+    transition: all 1500ms 250ms ease;
+
+    &.fade-in {
+        opacity: 1;
+        height: auto;
+
+        @media only screen and (max-width: $mobile-width-xs) {
+            width: 125%;
+            margin-left: -8%;
+        }
+    }
+}
+
+#paging {
+    opacity: 0;
+    margin-top: .2em;
+    height: 0;
+    transition: all 1500ms 250ms ease;
+    
+    &.fade-in {
+        opacity: 1;
+        height: auto;
+
+        @media only screen and (max-width: $mid-width) and (min-width: $mobile-width + 1) {
+            width: 125%;
+            margin-left: -12%;
+        }
+
+        @media only screen and (max-width: $mobile-width) {
+            position: relative;
+            width: 100%;
+            height: 3.4em;
+        }
+    }
+
+    .btn {
+        @media only screen and (max-width: $mobile-width) {
+            position: absolute;
+            bottom: 0;
+
+            &.prev {
+                left: 25%;
+            }
+
+            &.next {
+                right: 25%;
+            }
+        }
+    }
+
+    p {
+
+        @media only screen and (max-width: $mobile-width) {
+            width: 100%;
+        }
+    }
+}
+
+.hiddenLink {
+    display:none;
+}
+
+p {
+    &.copy {
+        text-align: center;
+        font-family: "Times New Roman", Georgia, serif;
+        color: $copy-color;
+        width: 75%;
+        background-color: rgba($wrapper-bg,.7);
+        margin: 0 auto;
+        border-radius: 0px 0px 5px 5px;
+
+        @media only screen and (max-width: $mobile-width) {
+            width: 100%;
+        }
+
+        a {
+            color: $copy-color;
+            border-bottom: 1px solid $copy-color;
+
+            &:hover {
+                text-decoration: none;
+                border-bottom-width: 0px;
+            }
+        }
+    }
+
+    &.mid {
+        font-size: 1.5em;
+        margin-top: .5em;
+    }
+
+    &.timestamp {
+        font-size: .7em;
+    }
+
+    &.wikiSuggestions {
+        clear: left;
+    }
+}
+
+.searchmatch {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.hover {
+    background-color: $wrapper-bg;
+}
