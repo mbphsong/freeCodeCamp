@@ -1,0 +1,36 @@
+.container-fluid
+    .wrapper
+        h1 Twitch Streamer
+        button.btn.btn-primary(id="getFeatured" type="button") Get Featured
+        p.mid - or -
+        form
+            .input-group(id="searchTwitch")
+                input.form-control(type="text" placeholder="Enter Twitch username to add channel")
+                .input-group-btn
+                    button.btn.btn-default(type="submit")
+                        i.glyphicon.glyphicon-search
+            .alert.alert-warning(id="searchAlert") Sorry, this login does not appear to exist on Twitch.
+            .alert.alert-warning(id="techAlert") We are experiencing technical difficulties.  Please try again later.
+            .btn-group(id="showType")
+                button.btn.btn-default.active(type="button" data-show="all") All
+                button.btn.btn-default(type="button" data-show="live") Live
+                button.btn.btn-default(type="button" data-show="offline") Offline
+        a.deleteAll(href="#" id="deleteAll") Remove all channels
+        div(id="channelContainer")
+            .channel(id="cloneMe")
+                .bg
+                    .flipper
+                        .name
+                            a(href="" target="_blank") --
+                        .status
+                .details
+                    a.deleteChannel(href="#") &times;
+                    .flipper
+                        .status
+                        .name
+                            a(href=""  target="_blank") --
+                        .game.small --
+                        .smaller Est. #[span.year]
+                        .smaller #[span.views] Views
+                        .smaller #[span.followers] Followers
+    p.copy By #[a(href="https://codepen.io/erinhalbmaier" target="_blank") Erin Halbmaier]

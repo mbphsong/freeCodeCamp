@@ -1,0 +1,373 @@
+@import url('https://fonts.googleapis.com/css?family=Josefin+Sans');
+
+$mobile-width: 480px;
+$mobile-width-xs: 370px;
+$wide-tablet-width: 1024px;
+$mid-width: 520px;
+$base: #ABCFEF;
+$copy-color: #ffffff;
+$font-color: #679AC8;
+$shadow-color: #305C84;
+$highlight-color: #FFF2B9;
+$gray: gray;
+$live-color: red;
+$live-highlight: pink;
+$wrapper-bg: #281E00;
+$channel-bg: #202054;
+$input-bg: #FFF2B9;
+$input-trans-length: 500ms;
+$input-delay: 1800ms;
+$header-font: "Josefin Sans";
+$anim-timing: cubic-bezier(0.57, 0, 0.85, .77);
+$anim-timing-flip: cubic-bezier(0.15, 0.33, 0.75, 1);
+$anim-timing2: cubic-bezier(0, 0.24, 0.78, 1.1);
+
+//these two mixins from joshbroton.com
+@mixin animation($animate...) {
+    $max: length($animate);
+    $animations: '';
+
+    @for $i from 1 through $max {
+        $animations: #{$animations + nth($animate, $i)};
+
+        @if $i < $max {
+            $animations: #{$animations + ", "};
+        }
+    }
+    -webkit-animation: $animations;
+    -moz-animation: $animations;
+    -o-animation: $animations;
+    animation: $animations;
+}
+
+@mixin keyframes($animationName) {
+    @-webkit-keyframes #{$animationName} {
+        @content;
+    }
+    @-moz-keyframes #{$animationName} {
+        @content;
+    }
+    @-o-keyframes #{$animationName} {
+        @content;
+    }
+    @keyframes #{$animationName} {
+        @content;
+    }
+    
+}
+
+@mixin perspective($value) {
+    -webkit-perspective: #{$value};
+    -moz-perspective: #{$value};
+    -ms-perspective: #{$value};
+    perspective: #{$value};
+    -ms-transform: perspective(#{$value});
+    -moz-transform: perspective(#{$value});
+    -moz-transform-style: preserve-3d;
+    -ms-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+}
+
+%thickCutout {
+    &:before {
+        position: absolute;
+        content: "";
+        display:block;
+        top:0;
+        left:0;
+        border-top:2em solid $wrapper-bg;
+        border-right:4em solid transparent;
+    }
+
+    &:after {
+        position: absolute;
+        content: "";
+        display:block;
+        bottom:0;
+        right:0;
+        border-bottom:2em solid $wrapper-bg;
+        border-left:4em solid transparent;
+    }
+}
+
+%smallCutout {
+    &:before {
+        position: absolute;
+        content: "";
+        display:block;
+        top:0;
+        right:0;
+        z-index: 10;
+        border-top:.5em solid $wrapper-bg;
+        border-left:.5em solid transparent;
+    }
+
+    &:after {
+        position: absolute;
+        content: "";
+        display:block;
+        bottom:0;
+        left:0;
+        border-bottom:.5em solid $wrapper-bg;
+        border-right:.5em solid transparent;
+    }
+}
+
+.container-fluid {
+    position: relative;
+    min-height: 100vh;
+    padding:0;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    background-color: rgba($wrapper-bg,.7);
+}
+
+.scenic {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: fixed;
+    height: 100vh;
+    width: 200vw;
+    z-index: -1;
+    left: -50%;
+    top:0;
+
+    img {
+		height: 100%;
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		margin: auto;
+		min-width: 50%;
+		min-height: 50%;
+	}
+}
+
+.wrapper {
+    width: 75%;
+    margin: 0 auto;
+    text-align: center;
+    background-color: rgba($wrapper-bg,.7);
+    font-size: 1.5em;
+    padding: 2em 2em .5em 2em;
+    color: $font-color;
+    border-radius: 5px 5px 0px 0px;
+    margin-top: 1em;
+    max-width: 1000px;
+    // border: 1px solid $dark;
+
+    @media only screen and (max-width: $mobile-width) {
+        width: 100%;
+        padding: .5em;
+        margin-top: 0;
+    }
+
+    h1 {
+        text-shadow: 1px 1px 1px $shadow-color;
+        margin-bottom: 1em;
+        font-family: $header-font;
+    }
+
+    .alert-warning {
+        font-size: 0.76em;
+        padding: 10px;
+        margin-top: .25em;
+    }
+}
+
+p {
+    &.copy {
+        text-align: center;
+        font-family: "Times New Roman", Georgia, serif;
+        color: $copy-color;
+        width: 75%;
+        background-color: rgba($wrapper-bg,.7);
+        margin: 0 auto;
+        border-radius: 0px 0px 5px 5px;
+        max-width: 1000px;
+
+        @media only screen and (max-width: $mobile-width) {
+            width: 100%;
+        }
+
+        a {
+            color: $copy-color;
+            border-bottom: 1px solid $copy-color;
+
+            &:hover {
+                text-decoration: none;
+                border-bottom-width: 0px;
+            }
+        }
+    }
+
+    &.mid {
+        font-size: 1.5em;
+        margin-top: .5em;
+    }
+}
+
+.channel {
+    position: relative;
+    transform: rotateX(90deg);
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    transition: all 1000ms ease;
+    // overflow: hidden;
+    position: relative;
+    overflow: visible;
+    @include perspective("1000px");
+    
+    
+    &.show {
+        transform: rotateX(0);
+        max-height: 5em;
+        opacity: 1;
+        margin-top: .3em;
+        // @include animation("glow 500ms 1000ms cubic-bezier(0.51, 0.45, 0.18, 0.97) forwards", "unglow 500ms 1500ms cubic-bezier(0.165, 0.84, 0.44, 1) forwards");
+
+        // &:after {
+        //     height: 100%;
+        //     width: 100%;
+        //     content: "";
+        //     display:block;
+        //     position: absolute;
+        //     top: 0;
+        //     left: 0;
+        //     box-shadow: 0px 0px 90px $highlight-color;
+        //     opacity: 0;
+        //     @include animation("glow 500ms 1000ms cubic-bezier(0.6, 0.37, 0.18, 0.87) forwards, unglow 500ms 1500ms cubic-bezier(0.6, 0.13, 0.49, 0.91) forwards");
+        // }
+    }
+
+
+    &:hover {
+        .bg {
+            transform: rotateX(180deg);
+        }
+        .details {
+            transform: rotateX(0deg);
+        }
+    }
+
+    .flipper {
+        @extend %smallCutout;
+        background-size: cover;
+        height: 100%;
+        background-color: $channel-bg;
+    }
+
+    .bg {
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        transform: rotateX(0deg);
+        transform-style: preserve-3d;
+        transition: transform 1s ease;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        z-index: -1;
+        background-color: white;
+
+        @extend %thickCutout;
+
+        img {
+            height: auto;
+            width: 100%;
+        }
+
+        .name {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translate(-50%);
+            background-color: rgba(100,100,100,0.7);
+            width: 100%;
+            text-shadow: 1px 1px 1px black;
+
+            @media only screen and (max-width: $mobile-width) {
+                font-size: .9em;
+            }
+        }
+    }
+
+    .details {
+        transform: rotateX(-180deg);
+        transition: transform 1s ease;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        background-color: $channel-bg;
+
+        @extend %thickCutout;
+
+        .game {
+            @media only screen and (max-width: $mobile-width) {
+                font-size: .75em;
+            }
+        }
+    }
+
+    .deleteChannel {
+        position: absolute;
+        top: 0px;
+        right: 10px;
+        color: $gray;;
+    }
+
+    .status {
+        color: $gray;
+        position: absolute;
+        left: 5px;
+        top: 3px;
+        font-size: .65em;
+
+        &.live {
+            color: $live-color;
+            font-weight: bold;
+            text-shadow: 0px 0px 5px $live-highlight;
+        }
+    }
+
+    .smaller {
+        font-size: .5em;
+    }
+}
+
+#showType {
+    margin-top: .5em;
+}
+
+#deleteAll {
+    font-size: .6em;
+    text-shadow: 1px 1px 1px $shadow-color;
+
+    &:hover {
+        color: $font-color;
+        text-decoration: none;
+        border-bottom: 1px solid $font-color;
+    }
+}
+
+// @include keyframes(glow) {
+//     0% {
+//         opacity: .01;
+//     }
+//     100% {
+//         // box-shadow: 0px 0px 90px $highlight-color;
+//         opacity: 1;
+//     }
+// }
+
+// @include keyframes(unglow) {
+//     0% {
+//         opacity: .99;
+//     }
+//     100% {
+//         // box-shadow: 0px 0px 0px;
+//         opacity: 0;
+//     }
+// }
