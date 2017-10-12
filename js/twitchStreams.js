@@ -7,10 +7,12 @@ $(document).ready(function dR() {
     // twitchAPI.getStreams("OgamingSC2");
 
     function twitchAjax() {
-        var url = "https://wind-bow.gomix.me/twitch-api/";
-
+        // var url = "https://wind-bow.gomix.me/twitch-api/";
+        var url = "https://api.twitch.tv/kraken/";
+        var clientID = "63jqvy9ekwcjtr434cripgk02xv8ce";
         function query(params) {
-            var sendURL = url + params.endpoint + "/" + params.login + "?callback=";
+            // var sendURL = url + params.endpoint + "/" + params.login + "?callback=";
+            var sendURL = url + params.endpoint + "/" + params.login + "?limit=10&client_id=" + clientID + "&callback=";
             var xhttp = new XMLHttpRequest();
 
             xhttp.onreadystatechange = function() {

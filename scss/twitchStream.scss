@@ -305,6 +305,7 @@ p {
         @extend %thickCutout;
 
         .game {
+            height: 1.5em;
             @media only screen and (max-width: $mobile-width) {
                 font-size: .75em;
             }
