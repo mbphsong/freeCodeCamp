@@ -1,4 +1,6 @@
 $(document).ready(function dR() {
+    //if wanting to use this after the end of 2018, will have to update `twitchAjax` to use new API
+    //and `success` functions to use new format of data response
     var twitchAPI = twitchModule();
 
     twitchAPI.addFeatured();
