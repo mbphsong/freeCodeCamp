@@ -3,9 +3,7 @@ function runCalculator() {
         var numberBuffer = "";
         var currTotal = 0;
         var equationString = "";
-        var currOperation = function start(nB) {
-            return nB;
-        };
+        var currOperation = getResult(0);
         var lastOperand = "";
         var operands = {
             "+": getSum,
@@ -25,7 +23,7 @@ function runCalculator() {
                     } else {
                         if (numberBuffer[numberBuffer.length-1] == ".") {
                             //make sure no hanging decimal
-                            numberBuffer = numberBuffer.substring(0,numberBuffer.length-1);
+                            numberBuffer = dropLast(numberBuffer);
                         }
                         equationString += numberBuffer;
                     }
@@ -33,30 +31,57 @@ function runCalculator() {
                 }
                 lastOperand = input;
                 currOperation = operands[input](currTotal);
-                return {
-                    runningTotal: currTotal,
-                    string: equationString + input,
-                };
+                return setData(currTotal, equationString + input);
             } else if (/[0-9.]/.test(input)) {
+                //have a number - add to buffer
                 if (numberBuffer == "") {
                     if (lastOperand != "=") {
+                        //new number, go ahead and officially add lastOperand to string
                         equationString += lastOperand;
                     } else {
+                        //hit "equals" and then entered a number rather than operand - start new equation
                         equationString = "";
                     }
                 }
+                numberBuffer = numberBuffer.replace(" ","");
                 numberBuffer += input;
-                if (numberBuffer.substr(numberBuffer.length-2) == "..") {
-                    //make sure don't end up with multiple decimals
-                    numberBuffer = numberBuffer.substring(0,numberBuffer.length - 1);
+                if (numberBuffer.substr(numberBuffer.length-2) == "..") {//make sure don't end up with multiple decimals
+                    numberBuffer = dropLast(numberBuffer);
                 }
 
-                return {
-                    runningTotal: equationString == "" ? numberBuffer : currTotal,
-                    string: equationString + numberBuffer,
-                };
+                return setData(equationString == "" ? numberBuffer : currTotal,equationString + numberBuffer);
+            } else {
+                switch (input) {
+                    case "backspace":
+                        numberBuffer = dropLast(numberBuffer);
+                        break;
+                    case "AC":
+                        clearAll();
+                        break;
+                    case "CE":
+                        clearNumberBuffer();
+                        break;
+                    default:
+                        break;
+                }
+                return setData(equationString == "" ? numberBuffer : currTotal,equationString + numberBuffer);
             }
-
+        }
+        
+        function clearAll() {
+            numberBuffer = "";
+            equationString = "";
+            currTotal = 0;
+            lastOperand = "";
+            currOperation = getResult(0);
+        }
+        
+        function clearNumberBuffer() {
+            numberBuffer = " ";
+        }
+        
+        function dropLast(string) {
+            return string.substring(0, string.length - 1);
         }
 
         function getDifference(minuend) {
@@ -128,6 +153,13 @@ function runCalculator() {
             }
         }
 
+        function setData(number, string) {
+            return {
+                runningTotal: number,
+                string: string,
+            }
+        }
+
         return {
             calculate: calculate,
         }
@@ -146,10 +178,21 @@ function runCalculator() {
     console.log(calculator.calculate("="));
     // console.log(calculator.calculate("-"));
     console.log(calculator.calculate("5"));
+    console.log(calculator.calculate("3"));
+    console.log(calculator.calculate("backspace"));
     console.log(calculator.calculate("^"));
-    // console.log(calculator.calculate("/"));
     console.log(calculator.calculate("2"));
+    console.log(calculator.calculate("2"));
+    console.log(calculator.calculate("CE"));
+    console.log(calculator.calculate("3"));
+    console.log(calculator.calculate("+"));
+    console.log(calculator.calculate("AC"));
+    console.log(calculator.calculate("3"));
+    console.log(calculator.calculate("/"));
+    console.log(calculator.calculate("8"));
     console.log(calculator.calculate("="));
 }
 
 runCalculator();
+
+//in the "keydown" click event, test if e.keyCode == 8, send "backspace" instead of String.fromCharCode(e.keyCode)
