@@ -44,7 +44,7 @@ function runCalculator() {
         const RUN_ORDER = (function() {
             var calcVal = "";
             var lastVal = "";
-            var opStack = [["start",0,getResult(0),0]];
+            var opStack = [stackItem("start",0,)];
             var tempStack = [];
             const PREC_LIM = Math.pow(10,14);
             const PEEK = function(arr) {
@@ -53,21 +53,22 @@ function runCalculator() {
 
             function checkStack(input,stack,value) {
                 //calculate items in stack until current operation has greater priority
-                while (stack.length > 0 && OPERANDS[PEEK(stack)[0]].priority >= OPERANDS[input].priority) {
+                while (stack.length > 0 && OPERANDS[PEEK(stack).operand].priority >= OPERANDS[input].priority) {
                     var thisOp = stack.pop();
                     //update calcVal for next operation (or to store in stack for this one)
-                    value = fixFloat(thisOp[2](value));
+                    value = fixFloat(thisOp.op(value));
                     //put in tempStack so we can "undo" if operand is changed to something w/ higher priority
                     tempStack.push(thisOp);
-                    totalString = totalString.replace(thisOp[1] + thisOp[0],"");
+                    totalString = totalString.replace(thisOp.storedVal + thisOp.operand,"");
                 }
                 //put new operation into stack
-                stack.push([input, value, OPERANDS[input].op(value),lastVal]);
+                // stack.push([input, value, OPERANDS[input].op(value),lastVal]);
+                stack.push(stackItem(input, value));
                 calcVal = value;
             }
 
             function clearOps() {
-                opStack = [["start",0,getResult(0)]];
+                opStack = [stackItem("start",0)];
             }
     
             function clearTemp() {
@@ -83,7 +84,7 @@ function runCalculator() {
                 while (tempStack.length) {
                     var tempOp = tempStack.pop();
                     opStack.push(tempOp);
-                    running +=tempOp[1] + tempOp[0]
+                    running += tempOp.storedVal + tempOp.operand;
                     totalString = totalString.replace(oldVal,running);
                     oldVal = running;
                 }
@@ -121,10 +122,10 @@ function runCalculator() {
                     totalString = dropLast(totalString);
                     var oldOp = opStack.pop();
                     var newPriority = OPERANDS[input].priority;
-                    var oldPriority = OPERANDS[oldOp[0]].priority
+                    var oldPriority = OPERANDS[oldOp.operand].priority
                     if (newPriority > oldPriority) {
                         //undo calcs that shouldn't have been done per order of operations
-                        resetOps(oldOp[1]);
+                        resetOps(oldOp.storedVal);
                         //redo any calcs that should be done, add this calc to stack
                         checkStack(input,opStack,lastVal);
                         //update total string for any calculations redone - include lastOperand in case there are two instances of lastVal (ie, 3-3 - replaces first instead of last)
@@ -151,6 +152,15 @@ function runCalculator() {
                 lastOperand = input;
 
                 return setData(totalString,equationString + input); 
+            }
+
+            function stackItem(operand,storeVal) {
+                return {
+                    operand: operand,
+                    storedVal: storeVal,
+                    op: OPERANDS[operand].op(storeVal),
+                    parens: [],
+                }
             }
             return {
                 run: runOrderOps,
@@ -356,5 +366,18 @@ function runCalculator() {
 }
 
 runCalculator();
-console.log(6.6-8)
+
 //in the "keydown" click event, test if e.keyCode == 8, send "backspace" instead of String.fromCharCode(e.keyCode)
+// var key = e.keycode
+// switch (key) {
+//     case 8:
+//         key = "backspace";
+//         break;
+//     case 13:
+//         key = "=";
+//         break;
+//     default:
+//         key = String.fromCharCode(key);
+//         break;
+// }
+// CALCULATOR.calculate(key);
