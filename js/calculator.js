@@ -52,13 +52,56 @@ function runCalculator() {
                 priority: 15,
             },
             "sin(": {
-                op: getSine,
+                op: function() {
+                    return getTrig("sine");
+                },
                 priority: 15,
-            }
+            },
+            "cos(": {
+                op: function() {
+                    return getTrig("cosine");
+                },
+                priority: 15,
+            },
+            "tan(": {
+                op: function() {
+                    return getTrig("tangent");
+                },
+                priority: 15,
+            },
+            "sin-1(": {
+                op: function() {
+                    return getTrig("arcsine");
+                },
+                priority: 15,
+            },
+            "cos-1(": {
+                op: function() {
+                    return getTrig("arccosine");
+                },
+                priority: 15,
+            },
+            "tan-1(": {
+                op: function() {
+                    return getTrig("arctangent");
+                },
+                priority: 15,
+            },
+
+        };
+        const NUM_OPERANDS = {
+            PI: {
+                val: Math.PI,
+                string: "&pi;",
+            },
+            e: {
+                val: Math.e,
+                string: "e",
+            },
         };
         const PEEK = function(arr) {
             return arr[arr.length - 1];
-        }
+        };
 
         const RUN_ORDER = (function() {
             var calcVal = "";
@@ -274,6 +317,13 @@ function runCalculator() {
                         totalString = "";
                         //add to stack
                         calcVal = numberBuffer != "" ? numberBuffer : calcVal;
+                        if (isParens(input)) {
+                            //opening parenthesis - assume multiplication intended
+                            runOrderOps("*");
+                            //now run with input again
+                            runOrderOps(input);
+                            return setRunData(totalString, "*" + input);
+                        }
                         checkStack(input,opStack,calcVal);
                         //clear buffer for next one
                         numberBuffer = "";
@@ -305,7 +355,10 @@ function runCalculator() {
                         //add lastOperand to val returned to ES if isParens
                         if (isParens(input)) {
                             //since would have removed lastOperand from ES under assumption switching
-                            returnES = PEEK(lastOperand) + returnES;
+                            if (lastOperand.length > 0) {
+                                //but not if equation began with parenthesis!
+                                returnES = PEEK(lastOperand) + returnES;
+                            }
                         }
                         
                         if (hasParens(opStack)) {
@@ -631,10 +684,48 @@ function runCalculator() {
             }
         }
 
-        function getSine() {
-            return function calcSine(degrees) {
-                return Math.sin((degrees * Math.PI) / 180);
+        function getTrig(funcType) {
+            function degToRad(degrees) {
+                return (degrees * Math.PI / 180);
             }
+            function radToDeg(radians) {
+                return (radians * 180 / Math.PI);
+            }
+            switch (funcType) {
+                case "sine":
+                    return function getSine(degrees) {
+                        return Math.sin(degToRad(degrees));
+                    }
+                    break;
+                case "cosine":
+                    return function getCosine(degrees) {
+                        return Math.cos(degToRad(degrees));
+                    }
+                    break;
+                case "tangent":
+                    return function getTangent(degrees) {
+                        return Math.tan(degToRad(degrees));
+                    }
+                    break;
+                case "arcsine":
+                    return function getArcsine(val) {
+                        return radToDeg(Math.asin(val));
+                    }
+                    break;
+                case "arccosine":
+                    return function getArccosine(val) {
+                        return radToDeg(Math.acos(val));
+                    }
+                    break;
+                case "arctangent":
+                    return function getArctangent(val) {
+                        return radToDeg(Math.atan(val));
+                    }
+                    break;
+                default:
+                    return getResult();
+                    break;
+            } 
         }
 
         function getSum(augend) {
@@ -798,7 +889,43 @@ function runCalculator() {
         ["1","0.375+1","0.375+1",""],        
         ["=","1.375","0.375+1=",""],        
         ["=","","",""],        
-
+        ["AC","","",""],        
+    ]
+    
+    var trigTest = [
+        ["sin(","sin(","sin(",""],        
+        ["9","sin(9","sin(9",""],        
+        ["0","sin(90","sin(90",""],        
+        [")","sin(90)","sin(90)",""],        
+        ["=","1","sin(90)=",""],        
+        ["sin-1(","1*sin-1(","1*sin-1(",""],        
+        ["1","1*sin-1(1","1*sin-1(1",""],        
+        [")","1*sin-1(1)","1*sin-1(1)",""],        
+        ["=","90","1*sin-1(1)=",""],        
+        ["=","","",""],        
+        ["cos(","cos(","cos(",""],        
+        ["9","cos(9","cos(9",""],        
+        ["0","cos(90","cos(90",""],        
+        [")","cos(90)","cos(90)",""],        
+        ["=","0","cos(90)=",""],        
+        ["AC","","",""],        
+        ["cos-1(","cos-1(","cos-1(",""],        
+        ["0","cos-1(0","cos-1(0",""],        
+        [")","cos-1(0)","cos-1(0)",""],        
+        ["=","90","cos-1(0)=",""],        
+        ["=","","",""],        
+        ["tan(","tan(","tan(",""],        
+        ["4","tan(4","tan(4",""],        
+        ["5","tan(45","tan(45",""],        
+        [")","tan(45)","tan(45)",""],        
+        ["=","1","tan(45)=",""],        
+        ["AC","","",""],        
+        ["tan-1(","tan-1(","tan-1(",""],        
+        ["1","tan-1(1","tan-1(1",""],        
+        [")","tan-1(1)","tan-1(1)",""],        
+        ["=","45","tan-1(1)=",""],        
+        ["=","","",""],        
+        
         ["AC","","",""],        
     ]
 
@@ -807,13 +934,13 @@ function runCalculator() {
             var subArr = testArr[i];
             var result = CALCULATOR.calculate(subArr[0]);
             if (result.runningTotal != subArr[1]) {
-                console.log(name,"tS",subArr[0],subArr[1], result.runningTotal);
+                console.log(name,subArr[0],"tS",subArr[1], result.runningTotal);
             } 
             if(result.string != subArr[2]) {
-                console.log(name,"eS",subArr[0],subArr[2], result.string);
+                console.log(name,subArr[0],"eS",subArr[2], result.string);
             } 
             if(result.warning != subArr[3]) {
-                console.log(name,"warn",subArr[0],subArr[3], result.warning);
+                console.log(name,subArr[0],"warn",subArr[3], result.warning);
            }
         }
     }
@@ -822,6 +949,7 @@ function runCalculator() {
     runTests("div0",div0Test);
     runTests("neg1st",neg1stTest);
     runTests("openOperand",openOperandTest);
+    runTests("trig",trigTest);
 
     //test opening operand
 }
