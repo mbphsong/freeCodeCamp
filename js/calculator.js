@@ -89,13 +89,13 @@ function runCalculator() {
             },
 
         };
-        const NUM_OPERANDS = {
+        const NUM_CONSTANTS = {
             PI: {
                 val: Math.PI,
                 string: "&pi;",
             },
             e: {
-                val: Math.e,
+                val: Math.E,
                 string: "e",
             },
         };
@@ -305,6 +305,16 @@ function runCalculator() {
                         return setRunData(totalString,"","Cannot divide by 0");
                     }
                 }
+                //have constant
+                if (NUM_CONSTANTS[input]) {
+                    calcVal = NUM_CONSTANTS[input].val;
+                    numberBuffer = "op";
+                    //clear totalString if after equals
+                    if (PEEK(lastOperand) == "=") {
+                        totalString = "";
+                    }
+                    return setRunData(totalString + NUM_CONSTANTS[input].string,NUM_CONSTANTS[input].string);
+                }
                 //have number or pushed operand after equals or parens
                 if (numberBuffer != "" || PEEK(lastOperand) == "=" || PEEK(lastOperand) == ")" || isParens(input)) {
                     //reset tempStack so we only have this operation's calcs to "undo" if necessary
@@ -316,7 +326,7 @@ function runCalculator() {
                         //clear total string
                         totalString = "";
                         //add to stack
-                        calcVal = numberBuffer != "" ? numberBuffer : calcVal;
+                        calcVal = numberBuffer != "" && numberBuffer != "op" ? numberBuffer : calcVal;
                         if (isParens(input)) {
                             //opening parenthesis - assume multiplication intended
                             runOrderOps("*");
@@ -529,8 +539,8 @@ function runCalculator() {
                 if (result.warning != "") {
                         return setData(currTotal + numberBuffer, equationString + numberBuffer, result.warning);
                 }
-                //continuation after equals
-                if (peeked == "=") {
+                //continuation after equals - but skip if we've added a constant
+                if (peeked == "=" && tempBuffer != "op") {
                     //have number after equals
                     if (tempBuffer != "") {
                         equationString = tempBuffer;
@@ -566,6 +576,24 @@ function runCalculator() {
                 equationString += result.addES;
                 currTotal = result.tS;
                 return setData(currTotal,equationString, result.warning);
+            } else if (NUM_CONSTANTS[input]) {
+                if (numberBuffer != "") {
+                    //assume multiplication, run with this first
+                    var firstResult = calculate("*");
+                    if (firstResult.warning != "") {
+                        return setData(currTotal + numberBuffer, equationString + numberBuffer, firstResult.warning);
+                    }
+                }
+                bufferNumbers(input);
+                //go ahead and send constant through
+                var result = RUN_ORDER.run(input);
+                if (result.warning != "") {
+                    return setData(currTotal + numberBuffer, equationString + numberBuffer, result.warning);
+                }
+                equationString += result.addES;
+                currTotal = result.tS;
+                return setData(currTotal,equationString, result.warning);
+                
             } else if (/[0-9.]/.test(input)) {
                 if (PEEK(lastOperand) == ")") {
                     //no operand selected after closing parenthesis - do nothing
@@ -925,7 +953,41 @@ function runCalculator() {
         [")","tan-1(1)","tan-1(1)",""],        
         ["=","45","tan-1(1)=",""],        
         ["=","","",""],        
-        
+        ["AC","","",""],        
+    ]
+    
+    var constantsTest = [
+        //test pi opening
+        ["PI","&pi;","&pi;",""],        
+        ["-","3.14159265358979-","&pi;-",""],        
+        ["2","3.14159265358979-2","&pi;-2",""],        
+        ["=","1.14159265358979","&pi;-2=",""],
+        //test pi w/no operand after equals - treat like number    
+        ["PI","&pi;","&pi;",""],        
+        ["+","3.14159265358979+","&pi;+",""],        
+        ["1","3.14159265358979+1","&pi;+1",""],        
+        ["-","4.14159265358979-","&pi;+1-",""],        
+        [".14159265358979","4.14159265358979-.14159265358979","&pi;+1-.14159265358979",""],        
+        ["+","4+","&pi;+1-.14159265358979+",""],        
+        ["1","4+1","&pi;+1-.14159265358979+1",""],        
+        //pi after number w/no operand between
+        ["PI","4+1*&pi;","&pi;+1-.14159265358979+1*&pi;",""],        
+        ["=","7.14159265358979","&pi;+1-.14159265358979+1*&pi;=",""],        
+        ["AC","","",""],        
+        //pi after operand
+        ["5","5","5",""],        
+        ["/","5/","5/",""],        
+        ["PI","5/&pi;","5/&pi;",""],        
+        ["+","1.59154943091895+","5/&pi;+",""],        
+        ["2","1.59154943091895+2","5/&pi;+2",""],        
+        ["=","3.59154943091895","5/&pi;+2=",""],        
+        //test e
+        ["5","5","5",""],        
+        ["/","5/","5/",""],        
+        ["e","5/e","5/e",""],        
+        ["+","1.83939720585721+","5/e+",""],        
+        ["2","1.83939720585721+2","5/e+2",""],        
+        ["=","3.83939720585721","5/e+2=",""],        
         ["AC","","",""],        
     ]
 
@@ -950,8 +1012,8 @@ function runCalculator() {
     runTests("neg1st",neg1stTest);
     runTests("openOperand",openOperandTest);
     runTests("trig",trigTest);
-
-    //test opening operand
+    runTests("constants",constantsTest);
+    
 }
 
 runCalculator();
