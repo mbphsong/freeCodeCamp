@@ -69,25 +69,50 @@ function runCalculator() {
                 },
                 priority: 15,
             },
-            "sin-1(": {
+            "sin<sup>-1</sup>(": {
                 op: function() {
                     return getTrig("arcsine");
                 },
                 priority: 15,
             },
-            "cos-1(": {
+            "cos<sup>-1</sup>(": {
                 op: function() {
                     return getTrig("arccosine");
                 },
                 priority: 15,
             },
-            "tan-1(": {
+            "tan<sup>-1</sup>(": {
                 op: function() {
                     return getTrig("arctangent");
                 },
                 priority: 15,
             },
-
+            "log<sub>10</sub>(": {
+                op: function() {
+                    return getLog(10);
+                },
+                priority: 15,
+            },
+            "ln(": {
+                op: function() {
+                    return getLog("e");
+                },
+                priority: 15,
+            },
+            "log<sub>2</sub>(": {
+                op: function() {
+                    return getLog(2);
+                },
+                priority: 15,
+            },
+            "!": {
+                op: function(val) {
+                    return function getFact() {
+                        return FACTORIAL(val);
+                    }
+                },
+                priority: 10,
+            },
         };
         const NUM_CONSTANTS = {
             PI: {
@@ -99,17 +124,41 @@ function runCalculator() {
                 string: "e",
             },
         };
+        const FACTORIAL = (function() {
+            var factorials = [1,1];
+            var currProduct = 1;
+    
+            function loopFactorial(value) {
+                if (value == 0) {
+                    return 1;
+                }
+                if (factorials[value] != undefined) {
+                    return factorials[value];
+                }
+    
+                factorials[value] = value * loopFactorial(value - 1);
+                return factorials[value];
+            }
+            function factorial(value) {
+                if (isNaN(value) || (parseInt(value) != value)) {
+                    console.log("Argument `" + value + "` not valid. Please pass an integer");
+                    return;
+                }
+                return loopFactorial(value);
+            }
+    
+            return factorial;
+        })();
         const PEEK = function(arr) {
             return arr[arr.length - 1];
         };
-
         const RUN_ORDER = (function() {
             var calcVal = "";
             var lastVal = "";
             var totalString = "";
             var opStack = [stackItem("start",0)];
             var tempStack = [];
-            const PREC_LIM = Math.pow(10,14);
+            const PREC_LIM = Math.pow(10,10);
             
             function checkEndParen(input,stacks) {
                 if (input == ")") {
@@ -246,12 +295,15 @@ function runCalculator() {
                         } else if (lastOperand.length > 0) {
                             //previous operand was endParen; can't undo
                             if (tempStack.length > 0 && tempStack[0].operand == "endParens") {
-
                                 clearTemp();
                                 //adjust lastVal so it sends the correct thing through for this case
                                 lastVal = calcVal;
                                 numberBuffer = "";
                                 totalString = dropLast(totalString,lastVal + "");
+                                if (lastOperand.length == 1 && PEEK(lastOperand) == ")") {
+                                    //can't undo only remaining item, so clear it out
+                                    lastOperand = [];
+                                }
                             } else {
                                 numberBuffer = "";
                                 
@@ -268,15 +320,20 @@ function runCalculator() {
                     if (lastOperand.length == 0) {
                         //removed last one - fill calcVal w/storedVal so we have something for next operand
                         calcVal = thisOp.storedVal;
-                        totalString = dropLast(totalString,calcVal);
+                        totalString = dropLast(totalString,calcVal + "");
                         numberBuffer = "op";
                     }
+                    return {
+                        strings: setRunData(totalString + calcVal),
+                        stack: stack,
+                        stacks: stacks,
+                    };
+                } else {
+                    return {
+                        string: setRunData(totalString),
+                        stacks: {},
+                    }
                 }
-                return {
-                    strings: setRunData(totalString + calcVal),
-                    stack: stack,
-                    stacks: stacks,
-                };
             }
 
             function resetOps(stack,oldVal) {
@@ -335,8 +392,13 @@ function runCalculator() {
                             return setRunData(totalString, "*" + input);
                         }
                         checkStack(input,opStack,calcVal);
-                        //clear buffer for next one
-                        numberBuffer = "";
+                        if (input == "!") {
+                            //only operates on the number it receives, so need an operand after
+                            numberBuffer = "op";
+                        } else {
+                            //clear buffer for next one
+                            numberBuffer = "";
+                        }
                     //opening parenthesis right after number
                     } else if (numberBuffer != "" && isParens(input) && !isParens(PEEK(lastOperand))) {
                         //opening parenthesis right after number - assume multiplication intended
@@ -349,7 +411,7 @@ function runCalculator() {
                         //set values for stack calculation
                         
                         if (numberBuffer == "op") {
-                            //undid op; use last calcVal
+                            //undid op or factorial; use last calcVal
                             calcVal = calcVal;
                         } else {
                             if (numberBuffer == "" && !isParens(input)) {
@@ -363,7 +425,7 @@ function runCalculator() {
                         // calcVal = (numberBuffer == "op" || numberBuffer == " ") ? calcVal : numberBuffer;
                         lastVal = calcVal;
                         //add lastOperand to val returned to ES if isParens
-                        if (isParens(input)) {
+                        if (isParens(input) || PEEK(lastOperand) == "!") {
                             //since would have removed lastOperand from ES under assumption switching
                             if (lastOperand.length > 0) {
                                 //but not if equation began with parenthesis!
@@ -402,8 +464,13 @@ function runCalculator() {
                                 return setRunData(totalString + buffer,endParen,"Closing parenthesis without opening parenthesis"); 
                             }
                             checkStack(input,opStack,calcVal);
-                            //clear numberBuffer for next entry
-                            numberBuffer = "";
+                            if (input == "!") {
+                                //only operates on the number it receives, so need an operand after
+                                numberBuffer = "op";
+                            } else {
+                                //clear numberBuffer for next entry
+                                numberBuffer = "";
+                            }
                         }
                     }
                     //update totalString - no equals sign at end
@@ -647,7 +714,10 @@ function runCalculator() {
         }
 
         function dropLast(string,operand) {
+            //force coercion if number sent through instead of string - otherwise length property won't work and it won't get dropped!
+            operand = operand != undefined ? String(operand) : operand;
             var numChars = operand == undefined ? 1 : operand.length;
+            
             if (operand != undefined) {
                 if (string.slice(-1 * numChars) != operand) {
                     return string;
@@ -664,6 +734,30 @@ function runCalculator() {
                 return function subtractEm(subtrahend) {
                     return minuend - subtrahend;
                 }
+            }
+        }
+
+        function getLog(base) {
+            switch (base) {
+                case 10:
+                    return function calcbase10Log(arg) {
+                        return Math.log10(arg);
+                    }
+                    break;
+                case 2:
+                    return function calcBase2Log(arg) {
+                        return Math.log2(arg);
+                    }
+                    break;
+                case "e":
+                    return function calcLn(arg) {
+                        return Math.log(arg);
+                    }
+                    break;
+                default:
+                    return function altBase(arg) {
+                        return Math.log(arg) / Math.log(base);
+                    }
             }
         }
 
@@ -822,23 +916,23 @@ function runCalculator() {
         ["-","2.7-7/(21.5-","4-1.3-7/(3+11*(5/2)-9-",""],        
         [")","2.7-7/(21.5)","4-1.3-7/(3+11*(5/2)-9)",""],        
         ["4","2.7-7/(21.5)","4-1.3-7/(3+11*(5/2)-9)","Must have operand between closing parenthesis and number"],        
-        ["*","2.7-0.32558139534884*","4-1.3-7/(3+11*(5/2)-9)*",""],        
-        ["*","2.7-0.32558139534884*","4-1.3-7/(3+11*(5/2)-9)*",""],        
-        ["-","2.7-0.32558139534884*-","4-1.3-7/(3+11*(5/2)-9)*-",""], 
+        ["*","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""],        
+        ["*","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""],        
+        ["-","2.7-0.3255813953*-","4-1.3-7/(3+11*(5/2)-9)*-",""], 
         //intend for this to remove the `-` and `*`, then put `-` in place of the `*`       
-        ["backspace","2.7-0.32558139534884* ","4-1.3-7/(3+11*(5/2)-9)* ",""], 
-        ["backspace","2.7-0.32558139534884","4-1.3-7/(3+11*(5/2)-9)",""], 
-        ["-","2.37441860465116-","4-1.3-7/(3+11*(5/2)-9)-",""], 
+        ["backspace","2.7-0.3255813953* ","4-1.3-7/(3+11*(5/2)-9)* ",""], 
+        ["backspace","2.7-0.3255813953","4-1.3-7/(3+11*(5/2)-9)",""], 
+        ["-","2.3744186047-","4-1.3-7/(3+11*(5/2)-9)-",""], 
         //then change back to `*` and add `-3` to strings
-        ["*","2.7-0.32558139534884*","4-1.3-7/(3+11*(5/2)-9)*",""], 
-        ["-","2.7-0.32558139534884*-","4-1.3-7/(3+11*(5/2)-9)*-",""], 
+        ["*","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""], 
+        ["-","2.7-0.3255813953*-","4-1.3-7/(3+11*(5/2)-9)*-",""], 
         //test "changing op" unmatched parens error
-        [")","2.7-0.32558139534884*-","4-1.3-7/(3+11*(5/2)-9)*-","Closing parenthesis without opening parenthesis"],        
-        ["3","2.7-0.32558139534884*-3","4-1.3-7/(3+11*(5/2)-9)*-3",""],        
-        ["3","2.7-0.32558139534884*-33","4-1.3-7/(3+11*(5/2)-9)*-33",""],        
-        ["=","13.44418604651172","4-1.3-7/(3+11*(5/2)-9)*-33=",""],        
+        [")","2.7-0.3255813953*-","4-1.3-7/(3+11*(5/2)-9)*-","Closing parenthesis without opening parenthesis"],        
+        ["3","2.7-0.3255813953*-3","4-1.3-7/(3+11*(5/2)-9)*-3",""],        
+        ["3","2.7-0.3255813953*-33","4-1.3-7/(3+11*(5/2)-9)*-33",""],        
+        ["=","13.4441860449","4-1.3-7/(3+11*(5/2)-9)*-33=",""],        
         ["AC","","",""],        
-    ]
+    ];
     
     var div0Test = [
         [5,"5","5",""],
@@ -850,7 +944,7 @@ function runCalculator() {
         ["1","1.25-1","5/04-1",""],
         ["=","0.25","5/04-1=",""],
         ["AC","","",""],        
-    ]
+    ];
     
     var neg1stTest = [
         //test negative first number
@@ -867,7 +961,7 @@ function runCalculator() {
         [")","-30+(-5)","-30+(-4-1)",""], 
         ["=","-35","-30+(-4-1)=",""], 
         ["AC","","",""],        
-    ]
+    ];
     
     var openOperandTest = [
         //test opening operand
@@ -918,7 +1012,7 @@ function runCalculator() {
         ["=","1.375","0.375+1=",""],        
         ["=","","",""],        
         ["AC","","",""],        
-    ]
+    ];
     
     var trigTest = [
         ["sin(","sin(","sin(",""],        
@@ -926,10 +1020,10 @@ function runCalculator() {
         ["0","sin(90","sin(90",""],        
         [")","sin(90)","sin(90)",""],        
         ["=","1","sin(90)=",""],        
-        ["sin-1(","1*sin-1(","1*sin-1(",""],        
-        ["1","1*sin-1(1","1*sin-1(1",""],        
-        [")","1*sin-1(1)","1*sin-1(1)",""],        
-        ["=","90","1*sin-1(1)=",""],        
+        ["sin<sup>-1</sup>(","1*sin<sup>-1</sup>(","1*sin<sup>-1</sup>(",""],        
+        ["1","1*sin<sup>-1</sup>(1","1*sin<sup>-1</sup>(1",""],        
+        [")","1*sin<sup>-1</sup>(1)","1*sin<sup>-1</sup>(1)",""],        
+        ["=","90","1*sin<sup>-1</sup>(1)=",""],        
         ["=","","",""],        
         ["cos(","cos(","cos(",""],        
         ["9","cos(9","cos(9",""],        
@@ -937,10 +1031,10 @@ function runCalculator() {
         [")","cos(90)","cos(90)",""],        
         ["=","0","cos(90)=",""],        
         ["AC","","",""],        
-        ["cos-1(","cos-1(","cos-1(",""],        
-        ["0","cos-1(0","cos-1(0",""],        
-        [")","cos-1(0)","cos-1(0)",""],        
-        ["=","90","cos-1(0)=",""],        
+        ["cos<sup>-1</sup>(","cos<sup>-1</sup>(","cos<sup>-1</sup>(",""],        
+        ["0","cos<sup>-1</sup>(0","cos<sup>-1</sup>(0",""],        
+        [")","cos<sup>-1</sup>(0)","cos<sup>-1</sup>(0)",""],        
+        ["=","90","cos<sup>-1</sup>(0)=",""],        
         ["=","","",""],        
         ["tan(","tan(","tan(",""],        
         ["4","tan(4","tan(4",""],        
@@ -948,48 +1042,94 @@ function runCalculator() {
         [")","tan(45)","tan(45)",""],        
         ["=","1","tan(45)=",""],        
         ["AC","","",""],        
-        ["tan-1(","tan-1(","tan-1(",""],        
-        ["1","tan-1(1","tan-1(1",""],        
-        [")","tan-1(1)","tan-1(1)",""],        
-        ["=","45","tan-1(1)=",""],        
+        ["tan<sup>-1</sup>(","tan<sup>-1</sup>(","tan<sup>-1</sup>(",""],        
+        ["1","tan<sup>-1</sup>(1","tan<sup>-1</sup>(1",""],        
+        [")","tan<sup>-1</sup>(1)","tan<sup>-1</sup>(1)",""],        
+        ["=","45","tan<sup>-1</sup>(1)=",""],        
         ["=","","",""],        
+        ["sin<sup>-1</sup>(","sin<sup>-1</sup>(","sin<sup>-1</sup>(",""],        
+        ["sin(","sin<sup>-1</sup>(sin(","sin<sup>-1</sup>(sin(",""],        
+        ["3","sin<sup>-1</sup>(sin(3","sin<sup>-1</sup>(sin(3",""],        
+        ["0","sin<sup>-1</sup>(sin(30","sin<sup>-1</sup>(sin(30",""],        
+        [")","sin<sup>-1</sup>(sin(30)","sin<sup>-1</sup>(sin(30)",""],        
+        [")","sin<sup>-1</sup>(0.5)","sin<sup>-1</sup>(sin(30))",""],        
+        ["+","30+","sin<sup>-1</sup>(sin(30))+",""],        
+        ["2","30+2","sin<sup>-1</sup>(sin(30))+2",""],        
+        ["=","32","sin<sup>-1</sup>(sin(30))+2=",""],        
         ["AC","","",""],        
-    ]
+    ];
     
     var constantsTest = [
         //test pi opening
         ["PI","&pi;","&pi;",""],        
-        ["-","3.14159265358979-","&pi;-",""],        
-        ["2","3.14159265358979-2","&pi;-2",""],        
-        ["=","1.14159265358979","&pi;-2=",""],
+        ["-","3.1415926536-","&pi;-",""],        
+        ["2","3.1415926536-2","&pi;-2",""],        
+        ["=","1.1415926536","&pi;-2=",""],
         //test pi w/no operand after equals - treat like number    
         ["PI","&pi;","&pi;",""],        
-        ["+","3.14159265358979+","&pi;+",""],        
-        ["1","3.14159265358979+1","&pi;+1",""],        
-        ["-","4.14159265358979-","&pi;+1-",""],        
-        [".14159265358979","4.14159265358979-.14159265358979","&pi;+1-.14159265358979",""],        
-        ["+","4+","&pi;+1-.14159265358979+",""],        
-        ["1","4+1","&pi;+1-.14159265358979+1",""],        
+        ["+","3.1415926536+","&pi;+",""],        
+        ["1","3.1415926536+1","&pi;+1",""],        
+        ["-","4.1415926536-","&pi;+1-",""],        
+        [".1415926536","4.1415926536-.1415926536","&pi;+1-.1415926536",""],        
+        ["+","4+","&pi;+1-.1415926536+",""],        
+        ["1","4+1","&pi;+1-.1415926536+1",""],        
         //pi after number w/no operand between
-        ["PI","4+1*&pi;","&pi;+1-.14159265358979+1*&pi;",""],        
-        ["=","7.14159265358979","&pi;+1-.14159265358979+1*&pi;=",""],        
+        ["PI","4+1*&pi;","&pi;+1-.1415926536+1*&pi;",""],        
+        ["=","7.1415926536","&pi;+1-.1415926536+1*&pi;=",""],        
         ["AC","","",""],        
         //pi after operand
         ["5","5","5",""],        
         ["/","5/","5/",""],        
         ["PI","5/&pi;","5/&pi;",""],        
-        ["+","1.59154943091895+","5/&pi;+",""],        
-        ["2","1.59154943091895+2","5/&pi;+2",""],        
-        ["=","3.59154943091895","5/&pi;+2=",""],        
+        ["+","1.5915494309+","5/&pi;+",""],        
+        ["2","1.5915494309+2","5/&pi;+2",""],        
+        ["=","3.5915494309","5/&pi;+2=",""],        
         //test e
         ["5","5","5",""],        
         ["/","5/","5/",""],        
         ["e","5/e","5/e",""],        
-        ["+","1.83939720585721+","5/e+",""],        
-        ["2","1.83939720585721+2","5/e+2",""],        
-        ["=","3.83939720585721","5/e+2=",""],        
+        ["+","1.8393972059+","5/e+",""],        
+        ["2","1.8393972059+2","5/e+2",""],        
+        ["=","3.8393972059","5/e+2=",""],        
         ["AC","","",""],        
-    ]
+    ];
+    
+    var logsTest = [
+        //test log base 10
+        ["log<sub>10</sub>(","log<sub>10</sub>(","log<sub>10</sub>(",""],        
+        ["1","log<sub>10</sub>(1","log<sub>10</sub>(1",""],        
+        ["0","log<sub>10</sub>(10","log<sub>10</sub>(10",""],        
+        ["0","log<sub>10</sub>(100","log<sub>10</sub>(100",""],        
+        [")","log<sub>10</sub>(100)","log<sub>10</sub>(100)",""],        
+        ["=","2","log<sub>10</sub>(100)=",""],   
+        //test log base 2     
+        ["3","3","3",""],        
+        ["+","3+","3+",""],        
+        ["log<sub>2</sub>(","3+log<sub>2</sub>(","3+log<sub>2</sub>(",""],        
+        ["1","3+log<sub>2</sub>(1","3+log<sub>2</sub>(1",""],        
+        ["6","3+log<sub>2</sub>(16","3+log<sub>2</sub>(16",""],        
+        ["/","3+log<sub>2</sub>(16/","3+log<sub>2</sub>(16/",""],        
+        ["2","3+log<sub>2</sub>(16/2","3+log<sub>2</sub>(16/2",""],        
+        [")","3+log<sub>2</sub>(8)","3+log<sub>2</sub>(16/2)",""],        
+        ["*","3+3*","3+log<sub>2</sub>(16/2)*",""],
+        //test backspace        
+        ["backspace","3+3","3+log<sub>2</sub>(16/2)",""],        
+        ["backspace","3+3","3+log<sub>2</sub>(16/2)",""],        
+        ["*","3+3*","3+log<sub>2</sub>(16/2)*",""],        
+        ["5","3+3*5","3+log<sub>2</sub>(16/2)*5",""],        
+        ["=","18","3+log<sub>2</sub>(16/2)*5=",""],        
+        ["=","","",""],        
+        ["ln(","ln(","ln(",""],        
+        ["e","ln(e","ln(e",""],        
+        [")","ln(2.7182818285)","ln(e)",""],        
+        ["=","1","ln(e)=",""],        
+
+        ["AC","","",""],        
+    ];
+
+    var factorialTest = [
+
+    ];
 
     function runTests(name,testArr) {
         for (var i=0; i<testArr.length; i++) {
@@ -1013,7 +1153,7 @@ function runCalculator() {
     runTests("openOperand",openOperandTest);
     runTests("trig",trigTest);
     runTests("constants",constantsTest);
-    
+    runTests("log",logsTest);
 }
 
 runCalculator();
