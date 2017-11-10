@@ -246,6 +246,10 @@ function runCalculator() {
             function isParens(string) {
                 return /\(/.test(string);
             }
+
+            function isTrig(str) {
+                return /cos|tan|sin/.test(str);
+            }
             
             function removeOperand(input) {
                 //remove last operand, no replacement at this point
@@ -723,6 +727,10 @@ function runCalculator() {
                     case "CE":
                         clearNumberBuffer();
                         break;
+                    case "degrees":
+                    case "radians":
+                        degRad = input;
+                        break;
                     default:
                         break;
                 }
@@ -1106,7 +1114,21 @@ function runCalculator() {
         ["5","sin(35+5","sin(35+5",""],        
         ["5","sin(35+55","sin(35+55",""],        
         [")","sin(90)","sin(35+55)",""],        
-        ["=","1","sin(35+55)=",""],        
+        ["=","1","sin(35+55)=",""],  
+        //test changing degRad
+        ["AC","","",""],        
+        ["sin(","sin(","sin(",""],        
+        ["1.5","sin(1.5","sin(1.5",""],        
+        ["708","sin(1.5708","sin(1.5708",""],        
+        ["radians","sin(1.5708","sin(1.5708",""],        
+        [")","sin(1.5708)","sin(1.5708)",""],        
+        ["=","1","sin(1.5708)=",""],        
+        ["sin<sup>-1</sup>(","1*sin<sup>-1</sup>(","1*sin<sup>-1</sup>(",""],        
+        ["1","1*sin<sup>-1</sup>(1","1*sin<sup>-1</sup>(1",""],        
+        [")","1*sin<sup>-1</sup>(1)","1*sin<sup>-1</sup>(1)",""],        
+        ["degrees","1*sin<sup>-1</sup>(1)","1*sin<sup>-1</sup>(1)",""],        
+        ["=","90","1*sin<sup>-1</sup>(1)=",""],        
+        ["=","","",""],    
         ["AC","","",""],        
     ];
     
