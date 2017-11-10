@@ -2,10 +2,12 @@ function runCalculator() {
     const CALCULATOR = (function() {
         var numberBuffer = "";
         var currTotal = "";
-        
+        var lastResult = 0;
         var equationString = "";
         var currOperation = getResult(0);
         var lastOperand = [];
+        var lastConstant = "";
+        var degRad = "degrees";
         const OPERANDS = {
             "+": { 
                 op: getSum,
@@ -116,12 +118,22 @@ function runCalculator() {
         };
         const NUM_CONSTANTS = {
             PI: {
-                val: Math.PI,
+                val: function() {
+                    return Math.PI;
+                },
                 string: "&pi;",
             },
             e: {
-                val: Math.E,
+                val: function() {
+                    return Math.E;
+                },
                 string: "e",
+            },
+            Ans: {
+                val: function() {
+                    return lastResult;
+                },
+                string: "Ans",
             },
         };
         const FACTORIAL = (function() {
@@ -185,7 +197,7 @@ function runCalculator() {
                     var thisOp = stack.pop();
                     //update value for next operation (or to store in stack for this one)
                    
-                    value = fixFloat(thisOp.op(value));
+                    value = fixFloat(thisOp.op(value,degRad));
 
                     //put in tempStack so we can "undo" if operand is changed to something w/ higher priority
                     tempStack.push(thisOp);
@@ -357,17 +369,20 @@ function runCalculator() {
                 if (numberBuffer == " ") {
                     return setRunData(totalString,"","Number required to run operation");
                 }
-                if (numberBuffer === "0") {
+                if (numberBuffer === "0" || (numberBuffer == "constant" && lastConstant == "Ans" && lastResult == 0)) {
                     if (opStack.length > 0 && PEEK(opStack).operand == "/") {
                         return setRunData(totalString,"","Cannot divide by 0");
                     }
                 }
                 //have constant
                 if (NUM_CONSTANTS[input]) {
-                    calcVal = NUM_CONSTANTS[input].val;
-                    numberBuffer = "op";
+                    // calcVal = NUM_CONSTANTS[input].val();
+                    numberBuffer = "constant";
+                    lastConstant = input;
                     //clear totalString if after equals
                     if (PEEK(lastOperand) == "=") {
+                        //fill lastResult
+                        lastResult = totalString;
                         totalString = "";
                     }
                     return setRunData(totalString + NUM_CONSTANTS[input].string,NUM_CONSTANTS[input].string);
@@ -380,10 +395,15 @@ function runCalculator() {
                     }
                     //add to stack
                     if (PEEK(lastOperand) == "=") {
+                        //fill lastResult
+                        lastResult = totalString;
                         //clear total string
                         totalString = "";
                         //add to stack
                         calcVal = numberBuffer != "" && numberBuffer != "op" ? numberBuffer : calcVal;
+                        if (numberBuffer == "constant") {
+                            calcVal = NUM_CONSTANTS[lastConstant].val();
+                        }
                         if (isParens(input)) {
                             //opening parenthesis - assume multiplication intended
                             runOrderOps("*");
@@ -409,7 +429,6 @@ function runCalculator() {
                     //regular
                     } else {
                         //set values for stack calculation
-                        
                         if (numberBuffer == "op") {
                             //undid op or factorial; use last calcVal
                             calcVal = calcVal;
@@ -419,13 +438,18 @@ function runCalculator() {
                                 //otherwise, use calcVal - must have backspaced operand and then entered new one
                                 calcVal = calcVal;
                             } else {
-                                calcVal = numberBuffer;
+                                if (numberBuffer == "constant") {
+                                    calcVal = NUM_CONSTANTS[lastConstant].val();
+                                } else {
+
+                                    calcVal = numberBuffer;
+                                }
                             }
                         } 
                         // calcVal = (numberBuffer == "op" || numberBuffer == " ") ? calcVal : numberBuffer;
                         lastVal = calcVal;
                         //add lastOperand to val returned to ES if isParens
-                        if (isParens(input) || PEEK(lastOperand) == "!") {
+                        if (isParens(input)) {
                             //since would have removed lastOperand from ES under assumption switching
                             if (lastOperand.length > 0) {
                                 //but not if equation began with parenthesis!
@@ -563,8 +587,8 @@ function runCalculator() {
         })();
 
         function bufferNumbers(input) {
-            if (numberBuffer == "op") {
-                return setData(currTotal,equationString);
+            if (numberBuffer.match(/op|constant/)) {
+                return setData(currTotal,equationString,"Operand required");
             }
             if (numberBuffer == "") {
                 if (PEEK(lastOperand) != "="  && lastOperand.length > 0) {
@@ -585,7 +609,7 @@ function runCalculator() {
             if (numberBuffer.substr(numberBuffer.length-2) == "..") {//make sure don't end up with multiple decimals
                 numberBuffer = dropLast(numberBuffer);
             }
-            return setData(equationString == "" ? numberBuffer : currTotal + numberBuffer,equationString + numberBuffer);
+            return setData(equationString == "" ? filterBuffer(numberBuffer) : currTotal + filterBuffer(numberBuffer),equationString + numberBuffer);
         }
         function calculate(input) {
             if (OPERANDS[input]) {
@@ -604,10 +628,10 @@ function runCalculator() {
                 var result = RUN_ORDER.run(input);
                 //have warning - return without updating
                 if (result.warning != "") {
-                        return setData(currTotal + numberBuffer, equationString + numberBuffer, result.warning);
+                        return setData(currTotal + filterBuffer(numberBuffer), equationString + filterBuffer(numberBuffer), result.warning);
                 }
                 //continuation after equals - but skip if we've added a constant
-                if (peeked == "=" && tempBuffer != "op") {
+                if (peeked == "=" && !tempBuffer.match(/op|constant/)) {
                     //have number after equals
                     if (tempBuffer != "") {
                         equationString = tempBuffer;
@@ -631,7 +655,7 @@ function runCalculator() {
                         if (peeked != ")") {
                             //officially add numberBuffer to equationString
                             //but only if we didn't just close a parenthesis since end parenthesis puts its calculated value in numberBuffer
-                                equationString += tempBuffer.replace("op","");
+                                equationString += filterBuffer(tempBuffer);
                         }
                     } else {
                         if (lastOperand.length > 0 && peeked != ")") {
@@ -648,20 +672,20 @@ function runCalculator() {
                     //assume multiplication, run with this first
                     var firstResult = calculate("*");
                     if (firstResult.warning != "") {
-                        return setData(currTotal + numberBuffer, equationString + numberBuffer, firstResult.warning);
+                        return setData(currTotal + filterBuffer(numberBuffer), equationString + filterBuffer(numberBuffer), firstResult.warning);
                     }
                 }
                 bufferNumbers(input);
                 //go ahead and send constant through
                 var result = RUN_ORDER.run(input);
                 if (result.warning != "") {
-                    return setData(currTotal + numberBuffer, equationString + numberBuffer, result.warning);
+                    return setData(currTotal + filterBuffer(numberBuffer), equationString + filterBuffer(numberBuffer), result.warning);
                 }
                 equationString += result.addES;
                 currTotal = result.tS;
                 return setData(currTotal,equationString, result.warning);
                 
-            } else if (/[0-9.]/.test(input)) {
+            } else if (/^[0-9.]+?$/.test(input)) {
                 if (PEEK(lastOperand) == ")") {
                     //no operand selected after closing parenthesis - do nothing
                     return setData(currTotal,equationString,"Must have operand between closing parenthesis and number"); 
@@ -672,13 +696,19 @@ function runCalculator() {
                 var result = {};
                 switch (input) {
                     case "backspace":
-                        if (numberBuffer != "" && numberBuffer != "op" && numberBuffer != " ") {
+                        if (numberBuffer != "" && !numberBuffer.match(/op| |constant/)) {
                             numberBuffer = dropLast(numberBuffer);
                             if (numberBuffer == "") {
                                 numberBuffer = " ";
                             }
                         } else {
-                            if (lastOperand.length > 0) {
+                            if (numberBuffer == "constant") {
+                                //remove constant
+                                numberBuffer = " ";
+                                currTotal = dropLast(currTotal,lastConstant);
+                                equationString = dropLast(equationString,lastConstant);
+                                lastConstant = "";
+                            } else if (lastOperand.length > 0) {
                                 equationString = dropLast(equationString,PEEK(lastOperand));
                                 result = RUN_ORDER.undo(input);
                                 currTotal = result.tS;
@@ -696,7 +726,7 @@ function runCalculator() {
                     default:
                         break;
                 }
-                return setData(equationString == "" ? numberBuffer : currTotal + numberBuffer,equationString + numberBuffer, result.warning);
+                return setData(equationString == "" ? filterBuffer(numberBuffer) : currTotal + filterBuffer(numberBuffer),equationString + filterBuffer(numberBuffer), result.warning);
             }
         }
         
@@ -711,6 +741,11 @@ function runCalculator() {
         
         function clearNumberBuffer() {
             numberBuffer = " ";
+        }
+
+        function filterBuffer(str) {
+            //remove placeholders that are purely for purposes of validation
+            return str.replace(/constant| |op/,"");
         }
 
         function dropLast(string,operand) {
@@ -815,33 +850,39 @@ function runCalculator() {
             }
             switch (funcType) {
                 case "sine":
-                    return function getSine(degrees) {
-                        return Math.sin(degToRad(degrees));
+                    return function getSine(val,type) {
+                        val = type == "degrees" ? degToRad(val) : val;
+                        return Math.sin(val);
                     }
                     break;
-                case "cosine":
-                    return function getCosine(degrees) {
-                        return Math.cos(degToRad(degrees));
+                    case "cosine":
+                    return function getCosine(val,type) {
+                        val = type == "degrees" ? degToRad(val) : val;
+                        return Math.cos(val);
                     }
                     break;
-                case "tangent":
-                    return function getTangent(degrees) {
-                        return Math.tan(degToRad(degrees));
+                    case "tangent":
+                    return function getTangent(val,type) {
+                        val = type == "degrees" ? degToRad(val) : val;
+                        return Math.tan(val);
                     }
                     break;
                 case "arcsine":
-                    return function getArcsine(val) {
-                        return radToDeg(Math.asin(val));
+                    return function getArcsine(val,type) {
+                        var calced = Math.asin(val);
+                        return type == "degrees" ? radToDeg(calced) : calced;
                     }
                     break;
-                case "arccosine":
-                    return function getArccosine(val) {
-                        return radToDeg(Math.acos(val));
+                    case "arccosine":
+                    return function getArccosine(val,type) {
+                        var calced = Math.acos(val);
+                        return type == "degrees" ? radToDeg(calced) : calced;
                     }
                     break;
-                case "arctangent":
-                    return function getArctangent(val) {
-                        return radToDeg(Math.atan(val));
+                    case "arctangent":
+                    return function getArctangent(val,type) {
+                        var calced = Math.atan(val);
+                        return type == "degrees" ? radToDeg(calced) : calced;
                     }
                     break;
                 default:
@@ -893,7 +934,7 @@ function runCalculator() {
         ["backspace","2.7-7*","4-1.3-7*",""],        
         ["backspace","2.7-7","4-1.3-7",""],        
         ["backspace","2.7-7","4-1.3-7",""],        
-        [6,"2.7-7","4-1.3-7",""],        
+        [6,"2.7-7","4-1.3-7","Operand required"],        
         ["/","2.7-7/","4-1.3-7/",""],        
         ["(","2.7-7/(","4-1.3-7/(",""],        
         ["3","2.7-7/(3","4-1.3-7/(3",""],        
@@ -920,7 +961,7 @@ function runCalculator() {
         ["*","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""],        
         ["-","2.7-0.3255813953*-","4-1.3-7/(3+11*(5/2)-9)*-",""], 
         //intend for this to remove the `-` and `*`, then put `-` in place of the `*`       
-        ["backspace","2.7-0.3255813953* ","4-1.3-7/(3+11*(5/2)-9)* ",""], 
+        ["backspace","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""], 
         ["backspace","2.7-0.3255813953","4-1.3-7/(3+11*(5/2)-9)",""], 
         ["-","2.3744186047-","4-1.3-7/(3+11*(5/2)-9)-",""], 
         //then change back to `*` and add `-3` to strings
@@ -971,9 +1012,9 @@ function runCalculator() {
         ["1","4-1","4-1",""],        
         ["-","3-","4-1-",""],        
         ["7","3-7","4-1-7",""],        
-        ["backspace","3- ","4-1- ",""], 
+        ["backspace","3-","4-1-",""], 
         //no calculation if numberBuffer is " "       
-        ["/","3- ","4-1- ","Number required to run operation"],        
+        ["/","3-","4-1-","Number required to run operation"],        
         ["7","3-7","4-1-7",""],        
         ["/","3-7/","4-1-7/",""],        
         ["*","3-7*","4-1-7*",""],        
@@ -999,7 +1040,7 @@ function runCalculator() {
         ["2","5^2","5^2",""],        
         ["2","5^22","5^22",""],  
         //test CE      
-        ["CE","5^ ","5^ ",""],        
+        ["CE","5^","5^",""],        
         ["3","5^3","5^3",""],        
         ["AC","","",""],        
         ["3","3","3",""],        
@@ -1056,6 +1097,16 @@ function runCalculator() {
         ["+","30+","sin<sup>-1</sup>(sin(30))+",""],        
         ["2","30+2","sin<sup>-1</sup>(sin(30))+2",""],        
         ["=","32","sin<sup>-1</sup>(sin(30))+2=",""],        
+        ["AC","","",""],
+        //test operations inside parens        
+        ["sin(","sin(","sin(",""],        
+        ["3","sin(3","sin(3",""],        
+        ["5","sin(35","sin(35",""],        
+        ["+","sin(35+","sin(35+",""],        
+        ["5","sin(35+5","sin(35+5",""],        
+        ["5","sin(35+55","sin(35+55",""],        
+        [")","sin(90)","sin(35+55)",""],        
+        ["=","1","sin(35+55)=",""],        
         ["AC","","",""],        
     ];
     
@@ -1123,12 +1174,65 @@ function runCalculator() {
         ["e","ln(e","ln(e",""],        
         [")","ln(2.7182818285)","ln(e)",""],        
         ["=","1","ln(e)=",""],        
-
         ["AC","","",""],        
     ];
-
+    
     var factorialTest = [
-
+        //basic test
+        ["5","5","5",""],        
+        ["!","5!","5!",""],        
+        ["=","120","5!=",""],        
+        ["AC","","",""],        
+        //test no number after
+        ["5","5","5",""],        
+        ["!","5!","5!",""],        
+        ["3","5!","5!","Operand required"],        
+        ["*","120*","5!*",""],
+        //test after end parenthesis
+        ["(","120*(","5!*(",""],
+        ["3","120*(3","5!*(3",""],
+        ["+","120*(3+","5!*(3+",""],
+        ["1","120*(3+1","5!*(3+1",""],
+        [")","120*(4)","5!*(3+1)",""],
+        ["!","120*4!","5!*(3+1)!",""],
+        ["=","2880","5!*(3+1)!=",""],
+        ["AC","","",""],        
+    ];
+    
+    var ansTest = [
+        ["3","3","3",""],        
+        ["+","3+","3+",""],        
+        ["2","3+2","3+2",""],        
+        ["=","5","3+2=",""],        
+        ["1","1","1",""],        
+        ["0","10","10",""],        
+        ["/","10/","10/",""],        
+        ["Ans","10/Ans","10/Ans",""],        
+        ["+","2+","10/Ans+",""],        
+        ["2","2+2","10/Ans+2",""],        
+        ["=","4","10/Ans+2=",""],        
+        //test divide by 0
+        ["-","4-","4-",""],        
+        ["4","4-4","4-4",""],        
+        ["=","0","4-4=",""],        
+        ["3","3","3",""],        
+        ["/","3/","3/",""],        
+        ["Ans","3/Ans","3/Ans",""],        
+        ["+","3/Ans","3/Ans","Cannot divide by 0"], 
+        ["backspace","3/","3/",""],        
+        ["1","3/1","3/1",""],        
+        ["=","3","3/1=",""],        
+        //test operand after =       
+        ["*","3*","3*",""],        
+        ["2","3*2","3*2",""],        
+        ["+","6+","3*2+",""],  
+        //test letters w/numbers      
+        ["hi2","6+","3*2+",""],        
+        ["2hi","6+","3*2+",""],        
+        ["h2hi","6+","3*2+",""],  
+        //test multi-digit numbers      
+        ["32","6+32","3*2+32",""],        
+        ["AC","","",""],        
     ];
 
     function runTests(name,testArr) {
@@ -1154,6 +1258,8 @@ function runCalculator() {
     runTests("trig",trigTest);
     runTests("constants",constantsTest);
     runTests("log",logsTest);
+    runTests("factorial",factorialTest);
+    runTests("Ans",ansTest);
 }
 
 runCalculator();
