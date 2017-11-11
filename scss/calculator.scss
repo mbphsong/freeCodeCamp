@@ -1,0 +1,208 @@
+@import url('https://fonts.googleapis.com/css?family=Josefin+Sans');
+
+$mobile-width: 480px;
+$mobile-width-xs: 370px;
+$wide-tablet-width: 1024px;
+$mid-width: 520px;
+$base: #ABCFEF;
+$copy-color: #ffffff;
+$font-color: #679AC8;
+$shadow-color: #305C84;
+$highlight-color: #FFF2B9;
+$gray: gray;
+$live-color: red;
+$live-highlight: pink;
+$wrapper-bg: #281E00;
+$channel-bg: #202054;
+$input-bg: #FFF2B9;
+$input-trans-length: 500ms;
+$input-delay: 1800ms;
+$header-font: "Josefin Sans";
+$anim-timing: cubic-bezier(0.57, 0, 0.85, .77);
+$anim-timing-flip: cubic-bezier(0.15, 0.33, 0.75, 1);
+$anim-timing2: cubic-bezier(0, 0.24, 0.78, 1.1);
+
+//these two mixins from joshbroton.com
+@mixin animation($animate...) {
+    $max: length($animate);
+    $animations: '';
+
+    @for $i from 1 through $max {
+        $animations: #{$animations + nth($animate, $i)};
+
+        @if $i < $max {
+            $animations: #{$animations + ", "};
+        }
+    }
+    -webkit-animation: $animations;
+    -moz-animation: $animations;
+    -o-animation: $animations;
+    animation: $animations;
+}
+
+@mixin keyframes($animationName) {
+    @-webkit-keyframes #{$animationName} {
+        @content;
+    }
+    @-moz-keyframes #{$animationName} {
+        @content;
+    }
+    @-o-keyframes #{$animationName} {
+        @content;
+    }
+    @keyframes #{$animationName} {
+        @content;
+    }
+    
+}
+
+@mixin perspective($value) {
+    -webkit-perspective: #{$value};
+    -moz-perspective: #{$value};
+    -ms-perspective: #{$value};
+    perspective: #{$value};
+    -ms-transform: perspective(#{$value});
+    -moz-transform: perspective(#{$value});
+    -moz-transform-style: preserve-3d;
+    -ms-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+}
+
+.container-fluid {
+    position: relative;
+    min-height: 100vh;
+    padding:0;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    background-color: rgba($wrapper-bg,.7);
+}
+
+.scenic {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: fixed;
+    height: 100vh;
+    width: 200vw;
+    z-index: -1;
+    left: -50%;
+    top:0;
+
+    img {
+		height: 100%;
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		margin: auto;
+		min-width: 50%;
+		min-height: 50%;
+	}
+}
+
+.wrapper {
+    width: 75%;
+    margin: 0 auto;
+    text-align: center;
+    background-color: rgba($wrapper-bg,.7);
+    font-size: 1.5em;
+    padding: 2em 2em .5em 2em;
+    color: $font-color;
+    border-radius: 5px 5px 0px 0px;
+    margin-top: 1em;
+    max-width: 1000px;
+
+    @media only screen and (max-width: $mobile-width) {
+        width: 100%;
+        padding: .5em;
+        margin-top: 0;
+    }
+
+    h1 {
+        text-shadow: 1px 1px 1px $shadow-color;
+        margin-bottom: 1em;
+        font-family: $header-font;
+    }
+
+    .alert-warning {
+        font-size: 0.76em;
+        padding: 10px;
+        margin-top: .25em;
+    }
+}
+
+.calcBody {
+    background-color: gray;
+
+    .window {
+        background-color: white;
+        width: 90%;
+        height: 4em;
+    }
+
+    .eS {
+        line-height: 1em;
+        font-size: .8em;
+        width: 100%;
+    }
+    .tS {
+        font-size: 1.5em;
+        width: 100%;
+    }
+    .warn {
+        font-size: .8em;
+        line-height: 1em;
+        width: 100%;
+    }
+}
+
+.calcButton {
+    border-radius: 10px;
+    border-style: solid;
+    border-color: $channel-bg;
+    border-bottom-width: 5px;
+    border-right-width: 2px;
+    background-color: lighten($channel-bg,10%);
+
+    &.toggle {
+        display:none;
+
+        &.show {
+            display:inline-block;
+        }
+    }
+}
+
+p {
+    &.copy {
+        text-align: center;
+        font-family: "Times New Roman", Georgia, serif;
+        color: $copy-color;
+        width: 75%;
+        background-color: rgba($wrapper-bg,.7);
+        margin: 0 auto;
+        border-radius: 0px 0px 5px 5px;
+        max-width: 1000px;
+
+        @media only screen and (max-width: $mobile-width) {
+            width: 100%;
+        }
+
+        a {
+            color: $copy-color;
+            border-bottom: 1px solid $copy-color;
+
+            &:hover {
+                text-decoration: none;
+                border-bottom-width: 0px;
+            }
+        }
+    }
+
+    &.mid {
+        font-size: 1.5em;
+        margin-top: .5em;
+    }
+}
+
+

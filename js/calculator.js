@@ -1,4 +1,10 @@
-function runCalculator() {
+$(document).ready(function dR() {
+    var letterBuffer = "";
+    var shiftPressed = false;
+    var rT = "";
+    var eString = "";
+    var warn = "";
+    
     const CALCULATOR = (function() {
         var numberBuffer = "";
         var currTotal = "";
@@ -335,9 +341,12 @@ function runCalculator() {
 
                     if (lastOperand.length == 0) {
                         //removed last one - fill calcVal w/storedVal so we have something for next operand
-                        calcVal = thisOp.storedVal;
+                        if (thisOp) {
+                            //only if not undefined (doesn't exist on empty parens at beginning of eS)
+                            calcVal = thisOp.storedVal;
+                        }
                         totalString = dropLast(totalString,calcVal + "");
-                        numberBuffer = "op";
+                        numberBuffer = totalString != "" ? "op" : "";
                     }
                     return {
                         strings: setRunData(totalString + calcVal),
@@ -370,17 +379,8 @@ function runCalculator() {
             
             function runOrderOps(input) {
                 var returnES = input;
-                if (numberBuffer == " ") {
-                    return setRunData(totalString,"","Number required to run operation");
-                }
-                if (numberBuffer === "0" || (numberBuffer == "constant" && lastConstant == "Ans" && lastResult == 0)) {
-                    if (opStack.length > 0 && PEEK(opStack).operand == "/") {
-                        return setRunData(totalString,"","Cannot divide by 0");
-                    }
-                }
                 //have constant
                 if (NUM_CONSTANTS[input]) {
-                    // calcVal = NUM_CONSTANTS[input].val();
                     numberBuffer = "constant";
                     lastConstant = input;
                     //clear totalString if after equals
@@ -390,6 +390,18 @@ function runCalculator() {
                         totalString = "";
                     }
                     return setRunData(totalString + NUM_CONSTANTS[input].string,NUM_CONSTANTS[input].string);
+                }
+                //check for missing numbers, div by 0
+                if (numberBuffer == " " && !isParens(input)) {
+                    return setRunData(totalString,"","Number required to run operation");
+                }
+                if (numberBuffer == "-") {
+                    return setRunData(totalString,"","Number required to run operation");
+                }
+                if (numberBuffer === "0" || (numberBuffer == "constant" && lastConstant == "Ans" && lastResult == 0)) {
+                    if (opStack.length > 0 && PEEK(opStack).operand == "/") {
+                        return setRunData(totalString,"","Cannot divide by 0");
+                    }
                 }
                 //have number or pushed operand after equals or parens
                 if (numberBuffer != "" || PEEK(lastOperand) == "=" || PEEK(lastOperand) == ")" || isParens(input)) {
@@ -403,18 +415,26 @@ function runCalculator() {
                         lastResult = totalString;
                         //clear total string
                         totalString = "";
+                        //clear lastOperand - can't undo past the equals!
+                        lastOperand = [];
                         //add to stack
                         calcVal = numberBuffer != "" && numberBuffer != "op" ? numberBuffer : calcVal;
                         if (numberBuffer == "constant") {
                             calcVal = NUM_CONSTANTS[lastConstant].val();
                         }
                         if (isParens(input)) {
-                            //opening parenthesis - assume multiplication intended
-                            runOrderOps("*");
-                            //now run with input again
-                            runOrderOps(input);
-                            return setRunData(totalString, "*" + input);
+                            if (numberBuffer != "" && numberBuffer != " ") {
+                                //opening parenthesis after number - assume multiplication intended
+                                runOrderOps("*");
+                                //now run with input again
+                                runOrderOps(input);
+                                return setRunData(totalString, "*" + input);
+                            } else {
+                                //opening parenthesis after equals - assume intended to start over
+                                calcVal = "";
+                            }
                         }
+                        lastVal = calcVal;
                         checkStack(input,opStack,calcVal);
                         if (input == "!") {
                             //only operates on the number it receives, so need an operand after
@@ -424,7 +444,7 @@ function runCalculator() {
                             numberBuffer = "";
                         }
                     //opening parenthesis right after number
-                    } else if (numberBuffer != "" && isParens(input) && !isParens(PEEK(lastOperand))) {
+                    } else if (numberBuffer != "" && numberBuffer != " " && isParens(input) && !isParens(PEEK(lastOperand))) {
                         //opening parenthesis right after number - assume multiplication intended
                         runOrderOps("*");
                         //now run with input again
@@ -450,7 +470,6 @@ function runCalculator() {
                                 }
                             }
                         } 
-                        // calcVal = (numberBuffer == "op" || numberBuffer == " ") ? calcVal : numberBuffer;
                         lastVal = calcVal;
                         //add lastOperand to val returned to ES if isParens
                         if (isParens(input)) {
@@ -458,6 +477,10 @@ function runCalculator() {
                             if (lastOperand.length > 0) {
                                 //but not if equation began with parenthesis!
                                 returnES = PEEK(lastOperand) + returnES;
+                            }
+                            if (calcVal == " ") {
+                                //check for deleted number before parens
+                                calcVal = "";
                             }
                         }
                         
@@ -512,7 +535,11 @@ function runCalculator() {
                             //make sure we aren't trying to "change" to an end parenthesis with no open parenthesis in our stack
                             return setRunData(totalString,"","Closing parenthesis without opening parenthesis");
                         } else {
-                            undoOp(input);
+                            var thisRes = undoOp(input);
+                            if (thisRes) {
+                                //warning sent back
+                                return thisRes;
+                            }
                         }
                     } else {
                         return setRunData(totalString,"","Must have number to perform operation");
@@ -638,21 +665,21 @@ function runCalculator() {
                 if (peeked == "=" && !tempBuffer.match(/op|constant/)) {
                     //have number after equals
                     if (tempBuffer != "") {
-                        equationString = tempBuffer;
+                        equationString = filterBuffer(tempBuffer);
                         equationString += result.addES;
                         //have operand after equals
                     } else {
                         if (input == "=") {
                             //send clear-all - assume this is intended if second enter
                             return calculate("AC");
-                        }else {
+                        } else {
                             equationString = result.tS;
                         }
                     }
                     currTotal = result.tS;
                     return setData(currTotal,equationString, result.warning);
                 } else {
-
+                    
                     if (tempBuffer != "") {
                         //regular
 
@@ -700,40 +727,41 @@ function runCalculator() {
                 var result = {};
                 switch (input) {
                     case "backspace":
-                        if (numberBuffer != "" && !numberBuffer.match(/op| |constant/)) {
-                            numberBuffer = dropLast(numberBuffer);
-                            if (numberBuffer == "") {
-                                numberBuffer = " ";
-                            }
-                        } else {
-                            if (numberBuffer == "constant") {
-                                //remove constant
-                                numberBuffer = " ";
-                                currTotal = dropLast(currTotal,lastConstant);
-                                equationString = dropLast(equationString,lastConstant);
-                                lastConstant = "";
-                            } else if (lastOperand.length > 0) {
-                                equationString = dropLast(equationString,PEEK(lastOperand));
-                                result = RUN_ORDER.undo(input);
-                                currTotal = result.tS;
-                                equationString += result.addES;
-                            }
-                            return setData(currTotal,equationString, result.warning);
+                    if (numberBuffer != "" && !numberBuffer.match(/op| |constant/)) {
+                        numberBuffer = dropLast(numberBuffer);
+                        if (numberBuffer == "") {
+                            numberBuffer = " ";
                         }
-                        break;
+                    } else {
+                        if (numberBuffer == "constant") {
+                            //remove constant
+                            numberBuffer = " ";
+                            currTotal = dropLast(currTotal,lastConstant);
+                            equationString = dropLast(equationString,lastConstant);
+                            lastConstant = "";
+                        } else if (lastOperand.length > 0) {
+                            equationString = dropLast(equationString,PEEK(lastOperand));
+                            result = RUN_ORDER.undo(input);
+                            currTotal = result.tS;
+                            equationString += result.addES;
+                        }
+                        return setData(currTotal.replace("0start",""),equationString, result.warning);
+                    }
+                    break;
                     case "AC":
-                        clearAll();
-                        break;
+                    clearAll();
+                    break;
                     case "CE":
-                        clearNumberBuffer();
-                        break;
+                    clearNumberBuffer();
+                    break;
                     case "degrees":
                     case "radians":
-                        degRad = input;
-                        break;
+                    degRad = input;
+                    break;
                     default:
-                        break;
+                    break;
                 }
+                
                 return setData(equationString == "" ? filterBuffer(numberBuffer) : currTotal + filterBuffer(numberBuffer),equationString + filterBuffer(numberBuffer), result.warning);
             }
         }
@@ -925,378 +953,534 @@ function runCalculator() {
 
         return {
             calculate: calculate,
+            dropLast: dropLast,
         }
     })();
 
-    var firstTest = [
-        [4,"4","4",""],
-        ["-","4-","4-",""],
-        ["1","4-1","4-1",""],
-        [".","4-1.","4-1.",""],
-        [3,"4-1.3","4-1.3",""],
-        ["-","2.7-","4-1.3-",""],
-        ["7","2.7-7","4-1.3-7",""],
-        //test warning for unmatched parenthesis
-        [")","2.7-7","4-1.3-7","Closing parenthesis without opening parenthesis"],
-        ["(","2.7-7*(","4-1.3-7*(",""],
-        ["backspace","2.7-7*","4-1.3-7*",""],        
-        ["backspace","2.7-7","4-1.3-7",""],        
-        ["backspace","2.7-7","4-1.3-7",""],        
-        [6,"2.7-7","4-1.3-7","Operand required"],        
-        ["/","2.7-7/","4-1.3-7/",""],        
-        ["(","2.7-7/(","4-1.3-7/(",""],        
-        ["3","2.7-7/(3","4-1.3-7/(3",""],        
-        ["+","2.7-7/(3+","4-1.3-7/(3+",""],        
-        ["1","2.7-7/(3+1","4-1.3-7/(3+1",""],        
-        ["1","2.7-7/(3+11","4-1.3-7/(3+11",""],        
-        ["(","2.7-7/(3+11*(","4-1.3-7/(3+11*(",""],        
-        ["5","2.7-7/(3+11*(5","4-1.3-7/(3+11*(5",""],        
-        ["/","2.7-7/(3+11*(5/","4-1.3-7/(3+11*(5/",""],        
-        ["2","2.7-7/(3+11*(5/2","4-1.3-7/(3+11*(5/2",""],        
-        [")","2.7-7/(3+11*(2.5)","4-1.3-7/(3+11*(5/2)",""],        
-        [")","2.7-7/(30.5)","4-1.3-7/(3+11*(5/2))",""],        
-        ["backspace","2.7-7/(3+11*(2.5)","4-1.3-7/(3+11*(5/2)",""],  
-        //make sure can't undo second closed parens      
-        ["backspace","2.7-7/(3+11*(2.5)","4-1.3-7/(3+11*(5/2)",""],        
-        ["-","2.7-7/(30.5-","4-1.3-7/(3+11*(5/2)-",""],        
-        ["9","2.7-7/(30.5-9","4-1.3-7/(3+11*(5/2)-9",""],        
-        [")","2.7-7/(21.5)","4-1.3-7/(3+11*(5/2)-9)",""],        
-        ["backspace","2.7-7/(30.5-9","4-1.3-7/(3+11*(5/2)-9",""],        
-        ["-","2.7-7/(21.5-","4-1.3-7/(3+11*(5/2)-9-",""],        
-        [")","2.7-7/(21.5)","4-1.3-7/(3+11*(5/2)-9)",""],        
-        ["4","2.7-7/(21.5)","4-1.3-7/(3+11*(5/2)-9)","Must have operand between closing parenthesis and number"],        
-        ["*","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""],        
-        ["*","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""],        
-        ["-","2.7-0.3255813953*-","4-1.3-7/(3+11*(5/2)-9)*-",""], 
-        //intend for this to remove the `-` and `*`, then put `-` in place of the `*`       
-        ["backspace","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""], 
-        ["backspace","2.7-0.3255813953","4-1.3-7/(3+11*(5/2)-9)",""], 
-        ["-","2.3744186047-","4-1.3-7/(3+11*(5/2)-9)-",""], 
-        //then change back to `*` and add `-3` to strings
-        ["*","2.7-0.3255813953*","4-1.3-7/(3+11*(5/2)-9)*",""], 
-        ["-","2.7-0.3255813953*-","4-1.3-7/(3+11*(5/2)-9)*-",""], 
-        //test "changing op" unmatched parens error
-        [")","2.7-0.3255813953*-","4-1.3-7/(3+11*(5/2)-9)*-","Closing parenthesis without opening parenthesis"],        
-        ["3","2.7-0.3255813953*-3","4-1.3-7/(3+11*(5/2)-9)*-3",""],        
-        ["3","2.7-0.3255813953*-33","4-1.3-7/(3+11*(5/2)-9)*-33",""],        
-        ["=","13.4441860449","4-1.3-7/(3+11*(5/2)-9)*-33=",""],        
-        ["AC","","",""],        
-    ];
-    
-    var div0Test = [
-        [5,"5","5",""],
-        ["/","5/","5/",""],
-        ["0","5/0","5/0",""],
-        ["+","5/0","5/0","Cannot divide by 0"],
-        ["4","5/04","5/04",""],
-        ["-","1.25-","5/04-",""],
-        ["1","1.25-1","5/04-1",""],
-        ["=","0.25","5/04-1=",""],
-        ["AC","","",""],        
-    ];
-    
-    var neg1stTest = [
-        //test negative first number
-        ["-","-","-",""],        
-        ["3","-3","-3",""],        
-        ["0","-30","-30",""],        
-        ["+","-30+","-30+",""],        
-        ["(","-30+(","-30+(",""], 
-        //test negative beginning of parenthesis section
-        ["-","-30+(-","-30+(-",""], 
-        ["4","-30+(-4","-30+(-4",""], 
-        ["-","-30+(-4-","-30+(-4-",""], 
-        ["1","-30+(-4-1","-30+(-4-1",""], 
-        [")","-30+(-5)","-30+(-4-1)",""], 
-        ["=","-35","-30+(-4-1)=",""], 
-        ["AC","","",""],        
-    ];
-    
-    var openOperandTest = [
-        //test opening operand
-        ["/","","","Must have number to perform operation"],        
-        ["4","4","4",""],        
-        ["-","4-","4-",""],        
-        ["1","4-1","4-1",""],        
-        ["-","3-","4-1-",""],        
-        ["7","3-7","4-1-7",""],        
-        ["backspace","3-","4-1-",""], 
-        //no calculation if numberBuffer is " "       
-        ["/","3-","4-1-","Number required to run operation"],        
-        ["7","3-7","4-1-7",""],        
-        ["/","3-7/","4-1-7/",""],        
-        ["*","3-7*","4-1-7*",""],        
-        ["+","-4+","4-1-7+",""],        
-        ["*","3-7*","4-1-7*",""],        
-        ["6","3-7*6","4-1-7*6",""],        
-        [".","3-7*6.","4-1-7*6.",""],
-        //test no double decimal        
-        [".","3-7*6.","4-1-7*6.",""],  
-        //test no trailing decimal      
-        ["-","-39-","4-1-7*6-",""],        
-        ["3","-39-3","4-1-7*6-3",""],        
-        ["-","-42-","4-1-7*6-3-",""],        
-        ["7","-42-7","4-1-7*6-3-7",""],        
-        [")","-42-7","4-1-7*6-3-7","Closing parenthesis without opening parenthesis"],        
-        [")","-42-7","4-1-7*6-3-7","Closing parenthesis without opening parenthesis"],        
-        ["=","-49","4-1-7*6-3-7=",""],
-        //test number after equals        
-        ["5","5","5",""],        
-        ["3","53","53",""],        
-        ["backspace","5","5",""],        
-        ["^","5^","5^",""],        
-        ["2","5^2","5^2",""],        
-        ["2","5^22","5^22",""],  
-        //test CE      
-        ["CE","5^","5^",""],        
-        ["3","5^3","5^3",""],        
-        ["AC","","",""],        
-        ["3","3","3",""],        
-        ["/","3/","3/",""],        
-        ["8","3/8","3/8",""],        
-        ["=","0.375","3/8=",""],        
-        //test operand after equals
-        ["+","0.375+","0.375+",""],        
-        ["1","0.375+1","0.375+1",""],        
-        ["=","1.375","0.375+1=",""],        
-        ["=","","",""],        
-        ["AC","","",""],        
-    ];
-    
-    var trigTest = [
-        ["sin(","sin(","sin(",""],        
-        ["9","sin(9","sin(9",""],        
-        ["0","sin(90","sin(90",""],        
-        [")","sin(90)","sin(90)",""],        
-        ["=","1","sin(90)=",""],        
-        ["sin<sup>-1</sup>(","1*sin<sup>-1</sup>(","1*sin<sup>-1</sup>(",""],        
-        ["1","1*sin<sup>-1</sup>(1","1*sin<sup>-1</sup>(1",""],        
-        [")","1*sin<sup>-1</sup>(1)","1*sin<sup>-1</sup>(1)",""],        
-        ["=","90","1*sin<sup>-1</sup>(1)=",""],        
-        ["=","","",""],        
-        ["cos(","cos(","cos(",""],        
-        ["9","cos(9","cos(9",""],        
-        ["0","cos(90","cos(90",""],        
-        [")","cos(90)","cos(90)",""],        
-        ["=","0","cos(90)=",""],        
-        ["AC","","",""],        
-        ["cos<sup>-1</sup>(","cos<sup>-1</sup>(","cos<sup>-1</sup>(",""],        
-        ["0","cos<sup>-1</sup>(0","cos<sup>-1</sup>(0",""],        
-        [")","cos<sup>-1</sup>(0)","cos<sup>-1</sup>(0)",""],        
-        ["=","90","cos<sup>-1</sup>(0)=",""],        
-        ["=","","",""],        
-        ["tan(","tan(","tan(",""],        
-        ["4","tan(4","tan(4",""],        
-        ["5","tan(45","tan(45",""],        
-        [")","tan(45)","tan(45)",""],        
-        ["=","1","tan(45)=",""],        
-        ["AC","","",""],        
-        ["tan<sup>-1</sup>(","tan<sup>-1</sup>(","tan<sup>-1</sup>(",""],        
-        ["1","tan<sup>-1</sup>(1","tan<sup>-1</sup>(1",""],        
-        [")","tan<sup>-1</sup>(1)","tan<sup>-1</sup>(1)",""],        
-        ["=","45","tan<sup>-1</sup>(1)=",""],        
-        ["=","","",""],        
-        ["sin<sup>-1</sup>(","sin<sup>-1</sup>(","sin<sup>-1</sup>(",""],        
-        ["sin(","sin<sup>-1</sup>(sin(","sin<sup>-1</sup>(sin(",""],        
-        ["3","sin<sup>-1</sup>(sin(3","sin<sup>-1</sup>(sin(3",""],        
-        ["0","sin<sup>-1</sup>(sin(30","sin<sup>-1</sup>(sin(30",""],        
-        [")","sin<sup>-1</sup>(sin(30)","sin<sup>-1</sup>(sin(30)",""],        
-        [")","sin<sup>-1</sup>(0.5)","sin<sup>-1</sup>(sin(30))",""],        
-        ["+","30+","sin<sup>-1</sup>(sin(30))+",""],        
-        ["2","30+2","sin<sup>-1</sup>(sin(30))+2",""],        
-        ["=","32","sin<sup>-1</sup>(sin(30))+2=",""],        
-        ["AC","","",""],
-        //test operations inside parens        
-        ["sin(","sin(","sin(",""],        
-        ["3","sin(3","sin(3",""],        
-        ["5","sin(35","sin(35",""],        
-        ["+","sin(35+","sin(35+",""],        
-        ["5","sin(35+5","sin(35+5",""],        
-        ["5","sin(35+55","sin(35+55",""],        
-        [")","sin(90)","sin(35+55)",""],        
-        ["=","1","sin(35+55)=",""],  
-        //test changing degRad
-        ["AC","","",""],        
-        ["sin(","sin(","sin(",""],        
-        ["1.5","sin(1.5","sin(1.5",""],        
-        ["708","sin(1.5708","sin(1.5708",""],        
-        ["radians","sin(1.5708","sin(1.5708",""],        
-        [")","sin(1.5708)","sin(1.5708)",""],        
-        ["=","1","sin(1.5708)=",""],        
-        ["sin<sup>-1</sup>(","1*sin<sup>-1</sup>(","1*sin<sup>-1</sup>(",""],        
-        ["1","1*sin<sup>-1</sup>(1","1*sin<sup>-1</sup>(1",""],        
-        [")","1*sin<sup>-1</sup>(1)","1*sin<sup>-1</sup>(1)",""],        
-        ["degrees","1*sin<sup>-1</sup>(1)","1*sin<sup>-1</sup>(1)",""],        
-        ["=","90","1*sin<sup>-1</sup>(1)=",""],        
-        ["=","","",""],    
-        ["AC","","",""],        
-    ];
-    
-    var constantsTest = [
-        //test pi opening
-        ["PI","&pi;","&pi;",""],        
-        ["-","3.1415926536-","&pi;-",""],        
-        ["2","3.1415926536-2","&pi;-2",""],        
-        ["=","1.1415926536","&pi;-2=",""],
-        //test pi w/no operand after equals - treat like number    
-        ["PI","&pi;","&pi;",""],        
-        ["+","3.1415926536+","&pi;+",""],        
-        ["1","3.1415926536+1","&pi;+1",""],        
-        ["-","4.1415926536-","&pi;+1-",""],        
-        [".1415926536","4.1415926536-.1415926536","&pi;+1-.1415926536",""],        
-        ["+","4+","&pi;+1-.1415926536+",""],        
-        ["1","4+1","&pi;+1-.1415926536+1",""],        
-        //pi after number w/no operand between
-        ["PI","4+1*&pi;","&pi;+1-.1415926536+1*&pi;",""],        
-        ["=","7.1415926536","&pi;+1-.1415926536+1*&pi;=",""],        
-        ["AC","","",""],        
-        //pi after operand
-        ["5","5","5",""],        
-        ["/","5/","5/",""],        
-        ["PI","5/&pi;","5/&pi;",""],        
-        ["+","1.5915494309+","5/&pi;+",""],        
-        ["2","1.5915494309+2","5/&pi;+2",""],        
-        ["=","3.5915494309","5/&pi;+2=",""],        
-        //test e
-        ["5","5","5",""],        
-        ["/","5/","5/",""],        
-        ["e","5/e","5/e",""],        
-        ["+","1.8393972059+","5/e+",""],        
-        ["2","1.8393972059+2","5/e+2",""],        
-        ["=","3.8393972059","5/e+2=",""],        
-        ["AC","","",""],        
-    ];
-    
-    var logsTest = [
-        //test log base 10
-        ["log<sub>10</sub>(","log<sub>10</sub>(","log<sub>10</sub>(",""],        
-        ["1","log<sub>10</sub>(1","log<sub>10</sub>(1",""],        
-        ["0","log<sub>10</sub>(10","log<sub>10</sub>(10",""],        
-        ["0","log<sub>10</sub>(100","log<sub>10</sub>(100",""],        
-        [")","log<sub>10</sub>(100)","log<sub>10</sub>(100)",""],        
-        ["=","2","log<sub>10</sub>(100)=",""],   
-        //test log base 2     
-        ["3","3","3",""],        
-        ["+","3+","3+",""],        
-        ["log<sub>2</sub>(","3+log<sub>2</sub>(","3+log<sub>2</sub>(",""],        
-        ["1","3+log<sub>2</sub>(1","3+log<sub>2</sub>(1",""],        
-        ["6","3+log<sub>2</sub>(16","3+log<sub>2</sub>(16",""],        
-        ["/","3+log<sub>2</sub>(16/","3+log<sub>2</sub>(16/",""],        
-        ["2","3+log<sub>2</sub>(16/2","3+log<sub>2</sub>(16/2",""],        
-        [")","3+log<sub>2</sub>(8)","3+log<sub>2</sub>(16/2)",""],        
-        ["*","3+3*","3+log<sub>2</sub>(16/2)*",""],
-        //test backspace        
-        ["backspace","3+3","3+log<sub>2</sub>(16/2)",""],        
-        ["backspace","3+3","3+log<sub>2</sub>(16/2)",""],        
-        ["*","3+3*","3+log<sub>2</sub>(16/2)*",""],        
-        ["5","3+3*5","3+log<sub>2</sub>(16/2)*5",""],        
-        ["=","18","3+log<sub>2</sub>(16/2)*5=",""],        
-        ["=","","",""],        
-        ["ln(","ln(","ln(",""],        
-        ["e","ln(e","ln(e",""],        
-        [")","ln(2.7182818285)","ln(e)",""],        
-        ["=","1","ln(e)=",""],        
-        ["AC","","",""],        
-    ];
-    
-    var factorialTest = [
-        //basic test
-        ["5","5","5",""],        
-        ["!","5!","5!",""],        
-        ["=","120","5!=",""],        
-        ["AC","","",""],        
-        //test no number after
-        ["5","5","5",""],        
-        ["!","5!","5!",""],        
-        ["3","5!","5!","Operand required"],        
-        ["*","120*","5!*",""],
-        //test after end parenthesis
-        ["(","120*(","5!*(",""],
-        ["3","120*(3","5!*(3",""],
-        ["+","120*(3+","5!*(3+",""],
-        ["1","120*(3+1","5!*(3+1",""],
-        [")","120*(4)","5!*(3+1)",""],
-        ["!","120*4!","5!*(3+1)!",""],
-        ["=","2880","5!*(3+1)!=",""],
-        ["AC","","",""],        
-    ];
-    
-    var ansTest = [
-        ["3","3","3",""],        
-        ["+","3+","3+",""],        
-        ["2","3+2","3+2",""],        
-        ["=","5","3+2=",""],        
-        ["1","1","1",""],        
-        ["0","10","10",""],        
-        ["/","10/","10/",""],        
-        ["Ans","10/Ans","10/Ans",""],        
-        ["+","2+","10/Ans+",""],        
-        ["2","2+2","10/Ans+2",""],        
-        ["=","4","10/Ans+2=",""],        
-        //test divide by 0
-        ["-","4-","4-",""],        
-        ["4","4-4","4-4",""],        
-        ["=","0","4-4=",""],        
-        ["3","3","3",""],        
-        ["/","3/","3/",""],        
-        ["Ans","3/Ans","3/Ans",""],        
-        ["+","3/Ans","3/Ans","Cannot divide by 0"], 
-        ["backspace","3/","3/",""],        
-        ["1","3/1","3/1",""],        
-        ["=","3","3/1=",""],        
-        //test operand after =       
-        ["*","3*","3*",""],        
-        ["2","3*2","3*2",""],        
-        ["+","6+","3*2+",""],  
-        //test letters w/numbers      
-        ["hi2","6+","3*2+",""],        
-        ["2hi","6+","3*2+",""],        
-        ["h2hi","6+","3*2+",""],  
-        //test multi-digit numbers      
-        ["32","6+32","3*2+32",""],        
-        ["AC","","",""],        
-    ];
+    function updateDisplay() {
+        $(".eS").html(eString + letterBuffer);
+        $(".tS").html(rT + letterBuffer);
+        $(".warn").html(warn);
+    }
 
-    function runTests(name,testArr) {
-        for (var i=0; i<testArr.length; i++) {
-            var subArr = testArr[i];
-            var result = CALCULATOR.calculate(subArr[0]);
-            if (result.runningTotal != subArr[1]) {
-                console.log(name,subArr[0],"tS",subArr[1], result.runningTotal);
-            } 
-            if(result.string != subArr[2]) {
-                console.log(name,subArr[0],"eS",subArr[2], result.string);
-            } 
-            if(result.warning != subArr[3]) {
-                console.log(name,subArr[0],"warn",subArr[3], result.warning);
-           }
+    function bufferLetters(ltr) {
+        const ltrMap = {
+            "sin": "19-9-14",
+            "cos": "3-15-19",
+            "tan": "20-1-14",
+            "asin": "1-19-9-14",
+            "acos": "1-3-15-19",
+            "atan": "1-20-1-14",
+            "arcsin": "1-19-9-14",
+            "arccos": "1-3-15-19",
+            "arctan": "1-20-1-14",
+            "ln": "12-14",
+            "logten": "12-15-7-10",
+            "logtwo": "12-15-7-2",
+            "ans": "1-14-19",
+            "e": "e",
+            "pi": "16-9",
+            "rad": "rad",
+            "deg": "deg",
+        };
+        letterBuffer += ltr.toLowerCase();
+        if (ltrMap[letterBuffer]) {
+            //have a valid operand
+            updateDisplay();
+            $(".kC_" + ltrMap[letterBuffer]).click();
+        } else {
+            //update display w/new letter
+            updateDisplay();
         }
     }
 
-    runTests("first",firstTest);
-    runTests("div0",div0Test);
-    runTests("neg1st",neg1stTest);
-    runTests("openOperand",openOperandTest);
-    runTests("trig",trigTest);
-    runTests("constants",constantsTest);
-    runTests("log",logsTest);
-    runTests("factorial",factorialTest);
-    runTests("Ans",ansTest);
-}
+    function setClicks() {
+        $(".calcButton").on("click", function bC(e) {
+            letterBuffer = "";
+            console.log(e.target.className);
+            var result = CALCULATOR.calculate($(e.target).attr("data-calc"));
+            eString = result.string;
+            rT = result.runningTotal;
+            warn = result.warning;
+            updateDisplay();
+        });
+        //tie keyboard to calculator buttons
+        $(document).on("keydown keyup", function kC(e) {
+            var kC = (e.which) ? e.which : e.keyCode;
+            const shiftMap = {
+                "m49": "5-24-3",
+                "m54": "5-24-16",
+                "m56": "42",
+                "m57": "16-1-18",
+                "m48": "5-14-4",
+                "m187": "43",
+            };
+            console.log(kC);
+            if (kC == 16) {
+                //shift key
+                shiftPressed = e.type == "keydown";
+            } else {
+                if (e.type == "keydown") {
+                    //don't want to run twice!
+                    warn = "";
+                    if (shiftPressed) {
+                        //if we have a map item for this key when combined with shift, assign that
+                        kC = shiftMap["m" + kC] || kC;
+                    }
 
-runCalculator();
+                    if (65 <= kC && kC <= 90) {
+                        //letter
+                        bufferLetters(String.fromCharCode(kC));
+                    } else if (kC == 8 && letterBuffer != "") {
+                        //backspace with letterBuffer - remove letters
+                        letterBuffer = CALCULATOR.dropLast(letterBuffer);
+                        updateDisplay();
+                    } else {
+                        //not a letter, so trigger click if button exists
+                        $(".kC_" + kC).click();
+                    } 
+                }
+            }
+        });
+        //toggle deg/rad buttons
+        $(".toggle").on("click", function togC(e) {
+            $(".toggle").toggleClass("show");
+        });
+    }
+    
+    function unitTests() {
+        var firstTest = [
+            [4, "4", "4", ""],
+            ["-", "4-", "4-", ""],
+            ["1", "4-1", "4-1", ""],
+            [".", "4-1.", "4-1.", ""],
+            [3, "4-1.3", "4-1.3", ""],
+            ["-", "2.7-", "4-1.3-", ""],
+            ["7", "2.7-7", "4-1.3-7", ""],
+            //test warning for unmatched parenthesis
+            [")", "2.7-7", "4-1.3-7", "Closing parenthesis without opening parenthesis"],
+            ["(", "2.7-7*(", "4-1.3-7*(", ""],
+            ["backspace", "2.7-7*", "4-1.3-7*", ""],
+            ["backspace", "2.7-7", "4-1.3-7", ""],
+            ["backspace", "2.7-7", "4-1.3-7", ""],
+            [6, "2.7-7", "4-1.3-7", "Operand required"],
+            ["/", "2.7-7/", "4-1.3-7/", ""],
+            ["(", "2.7-7/(", "4-1.3-7/(", ""],
+            ["3", "2.7-7/(3", "4-1.3-7/(3", ""],
+            ["+", "2.7-7/(3+", "4-1.3-7/(3+", ""],
+            ["1", "2.7-7/(3+1", "4-1.3-7/(3+1", ""],
+            ["1", "2.7-7/(3+11", "4-1.3-7/(3+11", ""],
+            ["(", "2.7-7/(3+11*(", "4-1.3-7/(3+11*(", ""],
+            ["5", "2.7-7/(3+11*(5", "4-1.3-7/(3+11*(5", ""],
+            ["/", "2.7-7/(3+11*(5/", "4-1.3-7/(3+11*(5/", ""],
+            ["2", "2.7-7/(3+11*(5/2", "4-1.3-7/(3+11*(5/2", ""],
+            [")", "2.7-7/(3+11*(2.5)", "4-1.3-7/(3+11*(5/2)", ""],
+            [")", "2.7-7/(30.5)", "4-1.3-7/(3+11*(5/2))", ""],
+            ["backspace", "2.7-7/(3+11*(2.5)", "4-1.3-7/(3+11*(5/2)", ""],
+            //make sure can't undo second closed parens      
+            ["backspace", "2.7-7/(3+11*(2.5)", "4-1.3-7/(3+11*(5/2)", ""],
+            ["-", "2.7-7/(30.5-", "4-1.3-7/(3+11*(5/2)-", ""],
+            ["9", "2.7-7/(30.5-9", "4-1.3-7/(3+11*(5/2)-9", ""],
+            [")", "2.7-7/(21.5)", "4-1.3-7/(3+11*(5/2)-9)", ""],
+            ["backspace", "2.7-7/(30.5-9", "4-1.3-7/(3+11*(5/2)-9", ""],
+            ["-", "2.7-7/(21.5-", "4-1.3-7/(3+11*(5/2)-9-", ""],
+            [")", "2.7-7/(21.5)", "4-1.3-7/(3+11*(5/2)-9)", ""],
+            ["4", "2.7-7/(21.5)", "4-1.3-7/(3+11*(5/2)-9)", "Must have operand between closing parenthesis and number"],
+            ["*", "2.7-0.3255813953*", "4-1.3-7/(3+11*(5/2)-9)*", ""],
+            ["*", "2.7-0.3255813953*", "4-1.3-7/(3+11*(5/2)-9)*", ""],
+            ["-", "2.7-0.3255813953*-", "4-1.3-7/(3+11*(5/2)-9)*-", ""],
+            //intend for this to remove the `-` and `*`, then put `-` in place of the `*`       
+            ["backspace", "2.7-0.3255813953*", "4-1.3-7/(3+11*(5/2)-9)*", ""],
+            ["backspace", "2.7-0.3255813953", "4-1.3-7/(3+11*(5/2)-9)", ""],
+            ["-", "2.3744186047-", "4-1.3-7/(3+11*(5/2)-9)-", ""],
+            //then change back to `*` and add `-3` to strings
+            ["*", "2.7-0.3255813953*", "4-1.3-7/(3+11*(5/2)-9)*", ""],
+            //test "changing op" unmatched parens error
+            [")", "2.7-0.3255813953*", "4-1.3-7/(3+11*(5/2)-9)*", "Closing parenthesis without opening parenthesis"],
+            ["-", "2.7-0.3255813953*-", "4-1.3-7/(3+11*(5/2)-9)*-", ""],
+            ["3", "2.7-0.3255813953*-3", "4-1.3-7/(3+11*(5/2)-9)*-3", ""],
+            ["3", "2.7-0.3255813953*-33", "4-1.3-7/(3+11*(5/2)-9)*-33", ""],
+            ["=", "13.4441860449", "4-1.3-7/(3+11*(5/2)-9)*-33=", ""],
+            ["AC", "", "", ""],
+        ];
+        var div0Test = [
+            [5, "5", "5", ""],
+            ["/", "5/", "5/", ""],
+            ["0", "5/0", "5/0", ""],
+            ["+", "5/0", "5/0", "Cannot divide by 0"],
+            ["4", "5/04", "5/04", ""],
+            ["-", "1.25-", "5/04-", ""],
+            ["1", "1.25-1", "5/04-1", ""],
+            ["=", "0.25", "5/04-1=", ""],
+            ["AC", "", "", ""],
+        ];
+        var neg1stTest = [
+            //test negative first number
+            ["-", "-", "-", ""],
+            ["3", "-3", "-3", ""],
+            ["0", "-30", "-30", ""],
+            ["+", "-30+", "-30+", ""],
+            ["(", "-30+(", "-30+(", ""],
+            //test negative beginning of parenthesis section
+            ["-", "-30+(-", "-30+(-", ""],
+            ["4", "-30+(-4", "-30+(-4", ""],
+            ["-", "-30+(-4-", "-30+(-4-", ""],
+            ["1", "-30+(-4-1", "-30+(-4-1", ""],
+            [")", "-30+(-5)", "-30+(-4-1)", ""],
+            ["=", "-35", "-30+(-4-1)=", ""],
+            ["AC", "", "", ""],
+        ];
+        var openOperandTest = [
+            //test opening operand
+            ["/", "", "", "Must have number to perform operation"],
+            ["4", "4", "4", ""],
+            ["-", "4-", "4-", ""],
+            ["1", "4-1", "4-1", ""],
+            ["-", "3-", "4-1-", ""],
+            ["7", "3-7", "4-1-7", ""],
+            ["backspace", "3-", "4-1-", ""],
+            //no calculation if numberBuffer is " "       
+            ["/", "3-", "4-1-", "Number required to run operation"],
+            ["7", "3-7", "4-1-7", ""],
+            ["/", "3-7/", "4-1-7/", ""],
+            ["*", "3-7*", "4-1-7*", ""],
+            ["+", "-4+", "4-1-7+", ""],
+            ["*", "3-7*", "4-1-7*", ""],
+            ["6", "3-7*6", "4-1-7*6", ""],
+            [".", "3-7*6.", "4-1-7*6.", ""],
+            //test no double decimal        
+            [".", "3-7*6.", "4-1-7*6.", ""],
+            //test no trailing decimal      
+            ["-", "-39-", "4-1-7*6-", ""],
+            ["3", "-39-3", "4-1-7*6-3", ""],
+            ["-", "-42-", "4-1-7*6-3-", ""],
+            ["7", "-42-7", "4-1-7*6-3-7", ""],
+            [")", "-42-7", "4-1-7*6-3-7", "Closing parenthesis without opening parenthesis"],
+            [")", "-42-7", "4-1-7*6-3-7", "Closing parenthesis without opening parenthesis"],
+            ["=", "-49", "4-1-7*6-3-7=", ""],
+            //test number after equals        
+            ["5", "5", "5", ""],
+            ["3", "53", "53", ""],
+            ["backspace", "5", "5", ""],
+            ["^", "5^", "5^", ""],
+            ["2", "5^2", "5^2", ""],
+            ["2", "5^22", "5^22", ""],
+            //test CE      
+            ["CE", "5^", "5^", ""],
+            ["3", "5^3", "5^3", ""],
+            ["AC", "", "", ""],
+            ["3", "3", "3", ""],
+            ["/", "3/", "3/", ""],
+            ["8", "3/8", "3/8", ""],
+            ["=", "0.375", "3/8=", ""],
+            //test operand after equals
+            ["+", "0.375+", "0.375+", ""],
+            ["1", "0.375+1", "0.375+1", ""],
+            ["=", "1.375", "0.375+1=", ""],
+            //test backspace after operand after equals
+            ["+", "1.375+", "1.375+", ""],
+            ["backspace", "1.375", "1.375", ""],
+            ["-", "1.375-", "1.375-", ""],
+            ["1", "1.375-1", "1.375-1", ""],
+            ["=", "0.375", "1.375-1=", ""],
+            ["=", "", "", ""],
+            //second backspace test
+            ["sin(", "sin(", "sin(", ""],
+            ["9", "sin(9", "sin(9", ""],
+            ["0", "sin(90", "sin(90", ""],
+            [")", "sin(90)", "sin(90)", ""],
+            ["=", "1", "sin(90)=", ""],
+            ["*", "1*", "1*", ""],
+            ["sin(", "1*sin(", "1*sin(", ""],
+            ["backspace", "1*", "1*", ""],
+            ["backspace", "1", "1", ""],
+            ["backspace", "1", "1", ""],
+            ["+", "1+", "1+", ""],
+            ["2", "1+2", "1+2", ""],
+            ["=", "3", "1+2=", ""],
+            // parens after number after equals
+            ["2", "2", "2", ""],
+            ["(", "2*(", "2*(", ""],
+            ["3", "2*(3", "2*(3", ""],
+            ["/", "2*(3/", "2*(3/", ""],
+            ["5", "2*(3/5", "2*(3/5", ""],
+            [")", "2*(0.6)", "2*(3/5)", ""],
+            ["=", "1.2", "2*(3/5)=", ""],
+            //parens after deleted number after equals
+            ["2", "2", "2", ""],
+            ["backspace", "", "", ""],
+            ["(", "(", "(", ""],
+            ["3", "(3", "(3", ""],
+            ["/", "(3/", "(3/", ""],
+            ["5", "(3/5", "(3/5", ""],
+            [")", "(0.6)", "(3/5)", ""],
+            ["=", "0.6", "(3/5)=", ""],
+            //parens after operand after equals
+            ["/", "0.6/", "0.6/", ""],
+            ["(", "0.6/(", "0.6/(", ""],
+            ["5", "0.6/(5", "0.6/(5", ""],
+            ["+", "0.6/(5+", "0.6/(5+", ""],
+            ["5", "0.6/(5+5", "0.6/(5+5", ""],
+            [")", "0.6/(10)", "0.6/(5+5)", ""],
+            ["=", "0.06", "0.6/(5+5)=", ""],
+            //backspace after operand after equals then operand
+            ["*", "0.06*", "0.06*", ""],
+            ["*", "0.06*", "0.06*", ""],
+            ["backspace", "0.06", "0.06", ""],
+            ["-", "0.06-", "0.06-", ""],
+            ["AC", "", "", ""],
+            //delete opening parens
+            ["(", "(", "(", ""],
+            ["backspace", "", "", ""],
+            //prevent changing opening parens to non-parens operand
+            ["(", "(", "(", ""],
+            ["+", "(", "(", "Can't have two non-parenthetical operands in a row"],
+            ["AC", "", "", ""],
+            //test operand inside parens
+            ["3", "3", "3", ""],
+            ["(", "3*(", "3*(", ""],
+            ["+", "3*(", "3*(", "Can't have two non-parenthetical operands in a row"],
 
-//in the "keydown" click event, test if e.keyCode == 8, send "backspace" instead of String.fromCharCode(e.keyCode)
-// var key = e.keycode
-// switch (key) {
-//     case 8:
-//         key = "backspace";
-//         break;
-//     case 13:
-//         key = "=";
-//         break;
-//     default:
-//         key = String.fromCharCode(key);
-//         break;
-// }
-// CALCULATOR.calculate(key);
+            ["AC", "", "", ""],
+        ];
+        var trigTest = [
+            ["sin(", "sin(", "sin(", ""],
+            ["9", "sin(9", "sin(9", ""],
+            ["0", "sin(90", "sin(90", ""],
+            [")", "sin(90)", "sin(90)", ""],
+            ["=", "1", "sin(90)=", ""],
+            ["sin<sup>-1</sup>(", "sin<sup>-1</sup>(", "sin<sup>-1</sup>(", ""],
+            ["1", "sin<sup>-1</sup>(1", "sin<sup>-1</sup>(1", ""],
+            [")", "sin<sup>-1</sup>(1)", "sin<sup>-1</sup>(1)", ""],
+            ["=", "90", "sin<sup>-1</sup>(1)=", ""],
+            ["=", "", "", ""],
+            ["cos(", "cos(", "cos(", ""],
+            ["9", "cos(9", "cos(9", ""],
+            ["0", "cos(90", "cos(90", ""],
+            [")", "cos(90)", "cos(90)", ""],
+            ["=", "0", "cos(90)=", ""],
+            ["AC", "", "", ""],
+            ["cos<sup>-1</sup>(", "cos<sup>-1</sup>(", "cos<sup>-1</sup>(", ""],
+            ["0", "cos<sup>-1</sup>(0", "cos<sup>-1</sup>(0", ""],
+            [")", "cos<sup>-1</sup>(0)", "cos<sup>-1</sup>(0)", ""],
+            ["=", "90", "cos<sup>-1</sup>(0)=", ""],
+            ["=", "", "", ""],
+            ["tan(", "tan(", "tan(", ""],
+            ["4", "tan(4", "tan(4", ""],
+            ["5", "tan(45", "tan(45", ""],
+            [")", "tan(45)", "tan(45)", ""],
+            ["=", "1", "tan(45)=", ""],
+            ["AC", "", "", ""],
+            ["tan<sup>-1</sup>(", "tan<sup>-1</sup>(", "tan<sup>-1</sup>(", ""],
+            ["1", "tan<sup>-1</sup>(1", "tan<sup>-1</sup>(1", ""],
+            [")", "tan<sup>-1</sup>(1)", "tan<sup>-1</sup>(1)", ""],
+            ["=", "45", "tan<sup>-1</sup>(1)=", ""],
+            ["=", "", "", ""],
+            ["sin<sup>-1</sup>(", "sin<sup>-1</sup>(", "sin<sup>-1</sup>(", ""],
+            ["sin(", "sin<sup>-1</sup>(sin(", "sin<sup>-1</sup>(sin(", ""],
+            ["3", "sin<sup>-1</sup>(sin(3", "sin<sup>-1</sup>(sin(3", ""],
+            ["0", "sin<sup>-1</sup>(sin(30", "sin<sup>-1</sup>(sin(30", ""],
+            [")", "sin<sup>-1</sup>(sin(30)", "sin<sup>-1</sup>(sin(30)", ""],
+            [")", "sin<sup>-1</sup>(0.5)", "sin<sup>-1</sup>(sin(30))", ""],
+            ["+", "30+", "sin<sup>-1</sup>(sin(30))+", ""],
+            ["2", "30+2", "sin<sup>-1</sup>(sin(30))+2", ""],
+            ["=", "32", "sin<sup>-1</sup>(sin(30))+2=", ""],
+            ["AC", "", "", ""],
+            //test operations inside parens        
+            ["sin(", "sin(", "sin(", ""],
+            ["3", "sin(3", "sin(3", ""],
+            ["5", "sin(35", "sin(35", ""],
+            ["+", "sin(35+", "sin(35+", ""],
+            ["5", "sin(35+5", "sin(35+5", ""],
+            ["5", "sin(35+55", "sin(35+55", ""],
+            [")", "sin(90)", "sin(35+55)", ""],
+            ["=", "1", "sin(35+55)=", ""],
+            //test changing degRad
+            ["AC", "", "", ""],
+            ["sin(", "sin(", "sin(", ""],
+            ["1.5", "sin(1.5", "sin(1.5", ""],
+            ["708", "sin(1.5708", "sin(1.5708", ""],
+            ["radians", "sin(1.5708", "sin(1.5708", ""],
+            [")", "sin(1.5708)", "sin(1.5708)", ""],
+            ["=", "1", "sin(1.5708)=", ""],
+            ["sin<sup>-1</sup>(", "sin<sup>-1</sup>(", "sin<sup>-1</sup>(", ""],
+            ["1", "sin<sup>-1</sup>(1", "sin<sup>-1</sup>(1", ""],
+            [")", "sin<sup>-1</sup>(1)", "sin<sup>-1</sup>(1)", ""],
+            ["degrees", "sin<sup>-1</sup>(1)", "sin<sup>-1</sup>(1)", ""],
+            ["=", "90", "sin<sup>-1</sup>(1)=", ""],
+            ["=", "", "", ""],
+            //
+            ["sin(", "sin(", "sin(", ""],
+            ["9", "sin(9", "sin(9", ""],
+            ["0", "sin(90", "sin(90", ""],
+            [")", "sin(90)", "sin(90)", ""],
+            ["=", "1", "sin(90)=", ""],
+            ["*", "1*", "1*", ""],
+            ["sin(", "1*sin(", "1*sin(", ""],
+            ["backspace", "1*", "1*", ""],
+            ["backspace", "1", "1", ""],
+            ["+", "1+", "1+", ""],
+            ["AC", "", "", ""],
+        ];
+        var constantsTest = [
+            //test pi opening
+            ["PI", "&pi;", "&pi;", ""],
+            ["-", "3.1415926536-", "&pi;-", ""],
+            ["2", "3.1415926536-2", "&pi;-2", ""],
+            ["=", "1.1415926536", "&pi;-2=", ""],
+            //test pi w/no operand after equals - treat like number    
+            ["PI", "&pi;", "&pi;", ""],
+            ["+", "3.1415926536+", "&pi;+", ""],
+            ["1", "3.1415926536+1", "&pi;+1", ""],
+            ["-", "4.1415926536-", "&pi;+1-", ""],
+            [".1415926536", "4.1415926536-.1415926536", "&pi;+1-.1415926536", ""],
+            ["+", "4+", "&pi;+1-.1415926536+", ""],
+            ["1", "4+1", "&pi;+1-.1415926536+1", ""],
+            //pi after number w/no operand between
+            ["PI", "4+1*&pi;", "&pi;+1-.1415926536+1*&pi;", ""],
+            ["=", "7.1415926536", "&pi;+1-.1415926536+1*&pi;=", ""],
+            ["AC", "", "", ""],
+            //pi after operand
+            ["5", "5", "5", ""],
+            ["/", "5/", "5/", ""],
+            ["PI", "5/&pi;", "5/&pi;", ""],
+            ["+", "1.5915494309+", "5/&pi;+", ""],
+            ["2", "1.5915494309+2", "5/&pi;+2", ""],
+            ["=", "3.5915494309", "5/&pi;+2=", ""],
+            //test e
+            ["5", "5", "5", ""],
+            ["/", "5/", "5/", ""],
+            ["e", "5/e", "5/e", ""],
+            ["+", "1.8393972059+", "5/e+", ""],
+            ["2", "1.8393972059+2", "5/e+2", ""],
+            ["=", "3.8393972059", "5/e+2=", ""],
+            ["AC", "", "", ""],
+        ];
+        var logsTest = [
+            //test log base 10
+            ["log<sub>10</sub>(", "log<sub>10</sub>(", "log<sub>10</sub>(", ""],
+            ["1", "log<sub>10</sub>(1", "log<sub>10</sub>(1", ""],
+            ["0", "log<sub>10</sub>(10", "log<sub>10</sub>(10", ""],
+            ["0", "log<sub>10</sub>(100", "log<sub>10</sub>(100", ""],
+            [")", "log<sub>10</sub>(100)", "log<sub>10</sub>(100)", ""],
+            ["=", "2", "log<sub>10</sub>(100)=", ""],
+            //test log base 2     
+            ["3", "3", "3", ""],
+            ["+", "3+", "3+", ""],
+            ["log<sub>2</sub>(", "3+log<sub>2</sub>(", "3+log<sub>2</sub>(", ""],
+            ["1", "3+log<sub>2</sub>(1", "3+log<sub>2</sub>(1", ""],
+            ["6", "3+log<sub>2</sub>(16", "3+log<sub>2</sub>(16", ""],
+            ["/", "3+log<sub>2</sub>(16/", "3+log<sub>2</sub>(16/", ""],
+            ["2", "3+log<sub>2</sub>(16/2", "3+log<sub>2</sub>(16/2", ""],
+            [")", "3+log<sub>2</sub>(8)", "3+log<sub>2</sub>(16/2)", ""],
+            ["*", "3+3*", "3+log<sub>2</sub>(16/2)*", ""],
+            //test backspace        
+            ["backspace", "3+3", "3+log<sub>2</sub>(16/2)", ""],
+            ["backspace", "3+3", "3+log<sub>2</sub>(16/2)", ""],
+            ["*", "3+3*", "3+log<sub>2</sub>(16/2)*", ""],
+            ["5", "3+3*5", "3+log<sub>2</sub>(16/2)*5", ""],
+            ["=", "18", "3+log<sub>2</sub>(16/2)*5=", ""],
+            ["=", "", "", ""],
+            ["ln(", "ln(", "ln(", ""],
+            ["e", "ln(e", "ln(e", ""],
+            [")", "ln(2.7182818285)", "ln(e)", ""],
+            ["=", "1", "ln(e)=", ""],
+            ["AC", "", "", ""],
+        ];
+        var factorialTest = [
+            //basic test
+            ["5", "5", "5", ""],
+            ["!", "5!", "5!", ""],
+            ["=", "120", "5!=", ""],
+            ["AC", "", "", ""],
+            //test no number after
+            ["5", "5", "5", ""],
+            ["!", "5!", "5!", ""],
+            ["3", "5!", "5!", "Operand required"],
+            ["*", "120*", "5!*", ""],
+            //test after end parenthesis
+            ["(", "120*(", "5!*(", ""],
+            ["3", "120*(3", "5!*(3", ""],
+            ["+", "120*(3+", "5!*(3+", ""],
+            ["1", "120*(3+1", "5!*(3+1", ""],
+            [")", "120*(4)", "5!*(3+1)", ""],
+            ["!", "120*4!", "5!*(3+1)!", ""],
+            ["=", "2880", "5!*(3+1)!=", ""],
+            ["AC", "", "", ""],
+        ];
+        var ansTest = [
+            ["3", "3", "3", ""],
+            ["+", "3+", "3+", ""],
+            ["2", "3+2", "3+2", ""],
+            ["=", "5", "3+2=", ""],
+            ["1", "1", "1", ""],
+            ["0", "10", "10", ""],
+            ["/", "10/", "10/", ""],
+            ["Ans", "10/Ans", "10/Ans", ""],
+            ["+", "2+", "10/Ans+", ""],
+            ["2", "2+2", "10/Ans+2", ""],
+            ["=", "4", "10/Ans+2=", ""],
+            //test divide by 0
+            ["-", "4-", "4-", ""],
+            ["4", "4-4", "4-4", ""],
+            ["=", "0", "4-4=", ""],
+            ["3", "3", "3", ""],
+            ["/", "3/", "3/", ""],
+            ["Ans", "3/Ans", "3/Ans", ""],
+            ["+", "3/Ans", "3/Ans", "Cannot divide by 0"],
+            ["backspace", "3/", "3/", ""],
+            ["1", "3/1", "3/1", ""],
+            ["=", "3", "3/1=", ""],
+            //test operand after =       
+            ["*", "3*", "3*", ""],
+            ["2", "3*2", "3*2", ""],
+            ["+", "6+", "3*2+", ""],
+            //test letters w/numbers      
+            ["hi2", "6+", "3*2+", ""],
+            ["2hi", "6+", "3*2+", ""],
+            ["h2hi", "6+", "3*2+", ""],
+            //test multi-digit numbers      
+            ["32", "6+32", "3*2+32", ""],
+            ["AC", "", "", ""],
+        ];
+        var miscTest = [
+            //can't do operand after negative w/no digits
+            ["2", "2", "2", ""],
+            ["+", "2+", "2+", ""],
+            ["-", "2+-", "2+-", ""],
+            ["/", "2+-", "2+-", "Number required to run operation"],
+
+            ["AC", "", "", ""],
+        ];
+        function runTests(name, testArr) {
+            for (var i = 0; i < testArr.length; i++) {
+                var subArr = testArr[i];
+                var result = CALCULATOR.calculate(subArr[0]);
+                if (result.runningTotal != subArr[1]) {
+                    console.log(name, subArr[0], "tS", subArr[1], result.runningTotal);
+                    // console.log(subArr[1].length,":"+result.runningTotal+ ":")
+                }
+                if (result.string != subArr[2]) {
+                    console.log(name, subArr[0], "eS", subArr[2], result.string);
+                    // console.log(subArr[2].length,":"+result.string+ ":")
+                }
+                if (result.warning != subArr[3]) {
+                    console.log(name, subArr[0], "warn", subArr[3], result.warning);
+                }
+            }
+        }
+        runTests("first", firstTest);
+        runTests("div0", div0Test);
+        runTests("neg1st", neg1stTest);
+        runTests("openOperand", openOperandTest);
+        runTests("trig", trigTest);
+        runTests("constants", constantsTest);
+        runTests("log", logsTest);
+        runTests("factorial", factorialTest);
+        runTests("Ans", ansTest);
+        runTests("Misc",miscTest);
+    }
+    
+    setClicks();
+    unitTests();
+});
