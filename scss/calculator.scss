@@ -18,9 +18,8 @@ $input-bg: #FFF2B9;
 $input-trans-length: 500ms;
 $input-delay: 1800ms;
 $header-font: "Josefin Sans";
-$anim-timing: cubic-bezier(0.57, 0, 0.85, .77);
-$anim-timing-flip: cubic-bezier(0.15, 0.33, 0.75, 1);
-$anim-timing2: cubic-bezier(0, 0.24, 0.78, 1.1);
+$btn-width: 4.5em;
+$btn-margin: .1em;
 
 //these two mixins from joshbroton.com
 @mixin animation($animate...) {
@@ -66,6 +65,27 @@ $anim-timing2: cubic-bezier(0, 0.24, 0.78, 1.1);
     -moz-transform-style: preserve-3d;
     -ms-transform-style: preserve-3d;
     transform-style: preserve-3d;
+}
+
+@mixin buttonColors($color) {
+    background-color: lighten($color,10%);
+    border-color: $color;
+
+    &:active {
+        border-color: lighten($color, 10%);
+        background-color: $color;
+        border-width: 0px 0px 2px 0px;
+    }
+    &.active {
+        border-color: lighten($color, 10%);
+        background-color: $color;
+        border-width: 0px 0px 2px 0px;
+    }
+    &.pushed {
+        border-color: lighten($color, 10%);
+        background-color: $color;
+        border-width: 0px 0px 2px 0px;
+    }
 }
 
 .container-fluid {
@@ -147,7 +167,13 @@ $anim-timing2: cubic-bezier(0, 0.24, 0.78, 1.1);
     }
     .tS {
         font-size: 1.5em;
-        width: 100%;
+        text-align: right;
+        display:inline-block;
+    }
+    .end-reminder {
+        text-align: right;
+        color: $gray;
+        display: inline-block;
     }
     .warn {
         font-size: .8em;
@@ -159,18 +185,39 @@ $anim-timing2: cubic-bezier(0, 0.24, 0.78, 1.1);
 .calcButton {
     border-radius: 10px;
     border-style: solid;
-    border-color: $channel-bg;
-    border-bottom-width: 5px;
-    border-right-width: 2px;
-    background-color: lighten($channel-bg,10%);
+    border-width: 0px 2px 4px 0px;
+    font-size: 0.8em;
+    width: $btn-width;
+    display: inline-block;
+    margin-bottom: .6em;
+    line-height: 1.6em;
+    @include buttonColors($channel-bg);
+    
+    &:active {
+        outline: none;
+    }
+
+    &:focus {
+        outline: none;
+    }
 
     &.toggle {
-        display:none;
+        // display:none;
 
         &.show {
             display:inline-block;
         }
     }
+}
+
+.digits {
+    width: $btn-width*3 + $btn-margin*2;
+    display: inline-block;
+}
+
+.w1 {
+    width: $btn-width;
+    display: inline-block;
 }
 
 p {

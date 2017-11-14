@@ -121,6 +121,26 @@ $(document).ready(function dR() {
                 },
                 priority: 10,
             },
+            "10^(": {
+                op: function() {
+                    return getPower(10);
+                },
+                priority: 15,
+            },
+            "2^(": {
+                op: function() {
+                    return getPower(2);
+                },
+                priority: 15,
+            },
+            "&radic;(": {
+                op: getSqRt,
+                priority: 15,
+            },
+            "<sup>2</sup>": {
+                op: getSquare,
+                priority: 3,
+            },
         };
         const NUM_CONSTANTS = {
             PI: {
@@ -141,6 +161,10 @@ $(document).ready(function dR() {
                 },
                 string: "Ans",
             },
+        };
+        const REQ_OP_AFTER = {
+            "!": "!", 
+            "<sup>2</sup>": "<sup>2</sup>",
         };
         const FACTORIAL = (function() {
             var factorials = [1,1];
@@ -170,6 +194,15 @@ $(document).ready(function dR() {
         const PEEK = function(arr) {
             return arr[arr.length - 1];
         };
+        const numberWithCommas = function(x) {
+            //separate integer from decimal
+            var splits = x.toString().split(".");
+            //add commas to integer
+            splits[0] = splits[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            //join back together
+            return  splits.join(".");
+        }
+
         const RUN_ORDER = (function() {
             var calcVal = "";
             var lastVal = "";
@@ -208,7 +241,6 @@ $(document).ready(function dR() {
                     //put in tempStack so we can "undo" if operand is changed to something w/ higher priority
                     tempStack.push(thisOp);
                     //figure out how much we are replacing since parenthesis are...different
-                    
                     var replaceVal = thisOp.operand == "endParens" ? thisOp.parens + thisOp.storedVal + ")" : thisOp.storedVal + thisOp.operand;
                     totalString = dropLast(totalString,replaceVal);
                 }
@@ -310,7 +342,7 @@ $(document).ready(function dR() {
                                 addin = calcVal;
                             }
                             return {
-                                strings: setRunData(totalString + addin),
+                                strings: setRunData(totalString + numberWithCommas(addin)),
                                 stack: stack,
                                 stacks: stacks,
                             };
@@ -321,7 +353,7 @@ $(document).ready(function dR() {
                                 //adjust lastVal so it sends the correct thing through for this case
                                 lastVal = calcVal;
                                 numberBuffer = "";
-                                totalString = dropLast(totalString,lastVal + "");
+                                totalString = dropLast(totalString,lastVal);
                                 if (lastOperand.length == 1 && PEEK(lastOperand) == ")") {
                                     //can't undo only remaining item, so clear it out
                                     lastOperand = [];
@@ -329,7 +361,7 @@ $(document).ready(function dR() {
                             } else {
                                 numberBuffer = "";
                                 
-                                totalString = dropLast(totalString,lastVal + "");
+                                totalString = dropLast(totalString,lastVal);
                                 resetOps(stack,thisOp.storedVal);
                             }
                             // lastOperand = [];
@@ -349,7 +381,7 @@ $(document).ready(function dR() {
                         numberBuffer = totalString != "" ? "op" : "";
                     }
                     return {
-                        strings: setRunData(totalString + calcVal),
+                        strings: setRunData(totalString + numberWithCommas(calcVal)),
                         stack: stack,
                         stacks: stacks,
                     };
@@ -411,8 +443,8 @@ $(document).ready(function dR() {
                     }
                     //add to stack
                     if (PEEK(lastOperand) == "=") {
-                        //fill lastResult
-                        lastResult = totalString;
+                        //fill lastResult (strip commas so will calculate)
+                        lastResult = totalString.replace(",","");
                         //clear total string
                         totalString = "";
                         //clear lastOperand - can't undo past the equals!
@@ -436,7 +468,7 @@ $(document).ready(function dR() {
                         }
                         lastVal = calcVal;
                         checkStack(input,opStack,calcVal);
-                        if (input == "!") {
+                        if (REQ_OP_AFTER[input]) {
                             //only operates on the number it receives, so need an operand after
                             numberBuffer = "op";
                         } else {
@@ -489,7 +521,8 @@ $(document).ready(function dR() {
                             if (input == "=") {
                                 //didn't add closing parenthesis - run first and then run again with equals
                                 runOrderOps(")");
-                                return runOrderOps("=");
+                                var result = runOrderOps("=");
+                                return setRunData(result.tS,")" + result.addES);
                             }
                             //find lowest level and operate there
                             var stacks = findLast(opStack);
@@ -505,7 +538,7 @@ $(document).ready(function dR() {
                             if (input == ")") {
                                 //no opening parenthesis to match - do nothing
                                 var endParen = "";
-                                var buffer = numberBuffer;
+                                var buffer = numberWithCommas(numberBuffer);
                                 if (PEEK(lastOperand) == ")") {
                                     //we don't want to officially add the previous closing parens since it will be done next loop, but we do need it to show up!
                                     //also don't want numberBuffer on there since it is just for calculation next time
@@ -515,7 +548,7 @@ $(document).ready(function dR() {
                                 return setRunData(totalString + buffer,endParen,"Closing parenthesis without opening parenthesis"); 
                             }
                             checkStack(input,opStack,calcVal);
-                            if (input == "!") {
+                            if (REQ_OP_AFTER[input]) {
                                 //only operates on the number it receives, so need an operand after
                                 numberBuffer = "op";
                             } else {
@@ -525,7 +558,7 @@ $(document).ready(function dR() {
                         }
                     }
                     //update totalString - no equals sign at end
-                    totalString += input == "=" ? calcVal : calcVal + input;
+                    totalString += input == "=" ? numberWithCommas(calcVal) : numberWithCommas(calcVal) + input;
                 //switching operation
                 } else {
                     //switching operation
@@ -542,7 +575,12 @@ $(document).ready(function dR() {
                             }
                         }
                     } else {
-                        return setRunData(totalString,"","Must have number to perform operation");
+                        if (totalString == "" && input == "=") {
+                            //if we pressed equals with a blank string, ignore it
+                            return setRunData(totalString,"","");
+                        } else {
+                            return setRunData(totalString,"","Must have number to perform operation");
+                        }
                     }
                 }
                 //cannot clear numberBuffer here - will mess up nested parenthesis!
@@ -564,7 +602,7 @@ $(document).ready(function dR() {
             function stackItem(operand,storeVal) {
                 return {
                     operand: operand,
-                    storedVal: storeVal,
+                    storedVal: numberWithCommas(storeVal),
                     op: OPERANDS[operand].op(storeVal),
                     parens: [],
                 }
@@ -591,7 +629,7 @@ $(document).ready(function dR() {
                     checkStack(input,result.stack,lastVal);
                     //update total string for any calculations redone - include lastOperand in case there are two instances of lastVal (ie, 3-3 - replaces first instead of last)
                     totalString = totalString.replace(oldOperand + lastVal,oldOperand + calcVal);
-                    totalString += lastVal + input;
+                    totalString += numberWithCommas(lastVal) + input;
                 } else {
                     //lower priority - check for any calcs that should be run
                     if (newPriority < oldPriority) {
@@ -601,7 +639,7 @@ $(document).ready(function dR() {
                         checkStack(input,result.stack,lastVal);
                     }
                     //update totalString
-                    totalString += input == "=" ? calcVal : calcVal + input;
+                    totalString += input == "=" ? numberWithCommas(calcVal) : numberWithCommas(calcVal) + input;
                 }
                 checkEndParen(input,result.stacks);
                 //removeOperand's buffer is removed in checkEndParen if not
@@ -637,10 +675,11 @@ $(document).ready(function dR() {
             
             numberBuffer = numberBuffer.replace(" ","");
             numberBuffer += input;
-            if (numberBuffer.substr(numberBuffer.length-2) == "..") {//make sure don't end up with multiple decimals
+            if ((numberBuffer.match(/\.{1}/g) || []).length > 1) {
+                //make sure don't end up with multiple decimals
                 numberBuffer = dropLast(numberBuffer);
             }
-            return setData(equationString == "" ? filterBuffer(numberBuffer) : currTotal + filterBuffer(numberBuffer),equationString + numberBuffer);
+            return setData(equationString == "" ? filterBuffer(numberBuffer) : currTotal + filterBuffer(numberBuffer),equationString + filterBuffer(numberBuffer));
         }
         function calculate(input) {
             if (OPERANDS[input]) {
@@ -779,14 +818,9 @@ $(document).ready(function dR() {
             numberBuffer = " ";
         }
 
-        function filterBuffer(str) {
-            //remove placeholders that are purely for purposes of validation
-            return str.replace(/constant| |op/,"");
-        }
-
         function dropLast(string,operand) {
             //force coercion if number sent through instead of string - otherwise length property won't work and it won't get dropped!
-            operand = operand != undefined ? String(operand) : operand;
+            operand = operand != undefined ? numberWithCommas(operand) : operand;
             var numChars = operand == undefined ? 1 : operand.length;
             
             if (operand != undefined) {
@@ -795,6 +829,13 @@ $(document).ready(function dR() {
                 }
             }
             return string.substring(0, string.length - numChars);
+        }
+        
+        function filterBuffer(str) {
+            //remove placeholders that are purely for purposes of validation
+            str = str.replace(/constant| |op/,"");
+            //format w/commas
+            return numberWithCommas(str);
         }
 
         function getDifference(minuend) {
@@ -875,6 +916,18 @@ $(document).ready(function dR() {
                     return val;
                 }
             }
+        }
+
+        function getSquare() {
+            return function squared(val) {
+                return Math.pow(val,2);
+            }
+        }
+
+        function getSqRt() {
+            return function calcSqRt(val) {
+                return Math.sqrt(val);
+            };
         }
 
         function getTrig(funcType) {
@@ -958,8 +1011,16 @@ $(document).ready(function dR() {
     })();
 
     function updateDisplay() {
+        var endRem = "";
+        var openPar = (rT.match(/\({1}/g) || []).length;
+        var closedPar = (rT.match(/\){1}/g) || []).length;
+        for (var  i=1; i<=openPar - closedPar; i++) {
+            endRem += ")";
+        }
+
         $(".eS").html(eString + letterBuffer);
         $(".tS").html(rT + letterBuffer);
+        $(".end-reminder").html(endRem);
         $(".warn").html(warn);
     }
 
@@ -997,7 +1058,7 @@ $(document).ready(function dR() {
     function setClicks() {
         $(".calcButton").on("click", function bC(e) {
             letterBuffer = "";
-            console.log(e.target.className);
+            // console.log(e.target.className);
             var result = CALCULATOR.calculate($(e.target).attr("data-calc"));
             eString = result.string;
             rT = result.runningTotal;
@@ -1040,11 +1101,13 @@ $(document).ready(function dR() {
                         $(".kC_" + kC).click();
                     } 
                 }
+                //mimic click
+                $(".kC_" + kC).toggleClass("active",e.type == "keydown");
             }
         });
         //toggle deg/rad buttons
         $(".toggle").on("click", function togC(e) {
-            $(".toggle").toggleClass("show");
+            $(".toggle").toggleClass("pushed");
         });
     }
     
@@ -1364,6 +1427,12 @@ $(document).ready(function dR() {
             ["0", "log<sub>10</sub>(100", "log<sub>10</sub>(100", ""],
             [")", "log<sub>10</sub>(100)", "log<sub>10</sub>(100)", ""],
             ["=", "2", "log<sub>10</sub>(100)=", ""],
+            //test 10 pow
+            ["10^(", "10^(", "10^(", ""],
+            ["Ans", "10^(Ans", "10^(Ans", ""],
+            [")", "10^(2)", "10^(Ans)", ""],
+            ["=", "100", "10^(Ans)=", ""],
+
             //test log base 2     
             ["3", "3", "3", ""],
             ["+", "3+", "3+", ""],
@@ -1381,6 +1450,13 @@ $(document).ready(function dR() {
             ["5", "3+3*5", "3+log<sub>2</sub>(16/2)*5", ""],
             ["=", "18", "3+log<sub>2</sub>(16/2)*5=", ""],
             ["=", "", "", ""],
+            //test 2 pow
+            ["2^(", "2^(", "2^(", ""],
+            ["4", "2^(4", "2^(4", ""],
+            [")", "2^(4)", "2^(4)", ""],
+            ["=", "16", "2^(4)=", ""],
+            ["=", "", "", ""],
+            //test ln
             ["ln(", "ln(", "ln(", ""],
             ["e", "ln(e", "ln(e", ""],
             [")", "ln(2.7182818285)", "ln(e)", ""],
@@ -1405,7 +1481,7 @@ $(document).ready(function dR() {
             ["1", "120*(3+1", "5!*(3+1", ""],
             [")", "120*(4)", "5!*(3+1)", ""],
             ["!", "120*4!", "5!*(3+1)!", ""],
-            ["=", "2880", "5!*(3+1)!=", ""],
+            ["=", "2,880", "5!*(3+1)!=", ""],
             ["AC", "", "", ""],
         ];
         var ansTest = [
@@ -1449,7 +1525,66 @@ $(document).ready(function dR() {
             ["+", "2+", "2+", ""],
             ["-", "2+-", "2+-", ""],
             ["/", "2+-", "2+-", "Number required to run operation"],
-
+            ["AC", "", "", ""],
+            ["ln(", "ln(", "ln(", ""],
+            [")", "ln(", "ln(", "Can't have two non-parenthetical operands in a row"],
+            ["AC", "", "", ""],
+            //test parenthesis as exponent
+            ["2", "2", "2", ""],
+            ["^", "2^", "2^", ""],
+            ["(", "2^(", "2^(", ""],
+            ["3", "2^(3", "2^(3", ""],
+            ["+", "2^(3+", "2^(3+", ""],
+            ["2", "2^(3+2", "2^(3+2", ""],
+            [")", "2^(5)", "2^(3+2)", ""],
+            ["=", "32", "2^(3+2)=", ""],
+            //test squared
+            ["<sup>2</sup>", "32<sup>2</sup>", "32<sup>2</sup>", ""],
+            ["=", "1,024", "32<sup>2</sup>=", ""],
+            //test square root
+            ["&radic;(", "&radic;(", "&radic;(", ""],
+            ["Ans", "&radic;(Ans", "&radic;(Ans", ""],
+            [")", "&radic;(1,024)", "&radic;(Ans)", ""],
+            ["=", "32", "&radic;(Ans)=", ""],
+            ["AC", "", "", ""],
+            //test no second decimal in string
+            ["6", "6", "6", ""],
+            [".", "6.", "6.", ""],
+            [".", "6.", "6.", ""],
+            ["3", "6.3", "6.3", ""],
+            [".", "6.3", "6.3", ""],
+            ["AC", "", "", ""],
+            //test opening equals do nothing
+            ["=", "", "", ""],
+            //test equals when missing end parens
+            ["(", "(", "(", ""],
+            ["(", "((", "((", ""],
+            ["(", "(((", "(((", ""],
+            ["3", "(((3", "(((3", ""],
+            ["=", "3", "(((3)))=", ""],
+            //test formatting w/commas for > 999
+            ["1", "1", "1", ""],
+            ["1", "11", "11", ""],
+            ["0", "110", "110", ""],
+            ["0", "1,100", "1,100", ""],
+            ["+", "1,100+", "1,100+", ""],
+            ["3", "1,100+3", "1,100+3", ""],
+            ["-", "1,103-", "1,100+3-", ""],
+            ["*", "1,100+3*", "1,100+3*", ""],
+            ["9", "1,100+3*9", "1,100+3*9", ""],
+            ["9", "1,100+3*99", "1,100+3*99", ""],
+            ["9", "1,100+3*999", "1,100+3*999", ""],
+            ["/", "1,100+2,997/", "1,100+3*999/", ""],
+            ["^", "1,100+3*999^", "1,100+3*999^", ""],
+            ["+", "4,097+", "1,100+3*999+", ""],
+            ["(", "4,097+(", "1,100+3*999+(", ""],
+            ["4", "4,097+(4", "1,100+3*999+(4", ""],
+            ["*", "4,097+(4*", "1,100+3*999+(4*", ""],
+            ["1", "4,097+(4*1", "1,100+3*999+(4*1", ""],
+            ["1", "4,097+(4*11", "1,100+3*999+(4*11", ""],
+            ["3", "4,097+(4*113", "1,100+3*999+(4*113", ""],
+            ["3", "4,097+(4*1,133", "1,100+3*999+(4*1,133", ""],
+            [")", "4,097+(4,532)", "1,100+3*999+(4*1,133)", ""],
             ["AC", "", "", ""],
         ];
         function runTests(name, testArr) {
@@ -1482,5 +1617,5 @@ $(document).ready(function dR() {
     }
     
     setClicks();
-    unitTests();
+    // unitTests();
 });
