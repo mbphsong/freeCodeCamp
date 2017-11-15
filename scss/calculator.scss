@@ -20,6 +20,11 @@ $input-delay: 1800ms;
 $header-font: "Josefin Sans";
 $btn-width: 4.5em;
 $btn-margin: .1em;
+$btn-height: 1.6em;
+$btn-btm-margin: .6em;
+$left-marg: 0.3em;
+$wrap-width: 510px;
+
 
 //these two mixins from joshbroton.com
 @mixin animation($animate...) {
@@ -67,25 +72,56 @@ $btn-margin: .1em;
     transform-style: preserve-3d;
 }
 
+@mixin pressedButton($color) {
+    border-right: 0px solid lighten($color, 10%);
+    border-bottom: 2px solid lighten($color, 10%);
+    background-color: $color;
+}
+
 @mixin buttonColors($color) {
     background-color: lighten($color,10%);
-    border-color: $color;
+    border-bottom-color: $color;
+    border-right-color: $color;
+    border-top-color: lighten($color,50%);
+    border-left-color: lighten($color,50%);
 
     &:active {
-        border-color: lighten($color, 10%);
-        background-color: $color;
-        border-width: 0px 0px 2px 0px;
+        @include pressedButton($color);
     }
     &.active {
-        border-color: lighten($color, 10%);
-        background-color: $color;
-        border-width: 0px 0px 2px 0px;
+        @include pressedButton($color);
     }
     &.pushed {
-        border-color: lighten($color, 10%);
-        background-color: $color;
-        border-width: 0px 0px 2px 0px;
+        @include pressedButton($color);
     }
+}
+
+@mixin w1 {
+    width: $btn-width*1;
+    margin-left: $left-marg;
+    // margin-right: 0.2em;
+}
+
+@mixin w2 {
+    width: $btn-width*2 + $btn-margin + 0.2em;
+    margin-left: $left-marg;
+    // margin-right: 0.2em;
+}
+
+@mixin w3 {
+    width: $btn-width*3 + $btn-margin*2 + 0.4em;
+    margin-left: $left-marg;
+    // margin-right: 0.2em;
+}
+
+@mixin w4 {
+    width: $btn-width*4 + $btn-margin*3 + 0.6em;
+    margin-left: $left-marg;
+    // margin-right: 0.2em;
+}
+
+@mixin h2 {
+    line-height: $btn-height*2 + $btn-btm-margin + 0.2em;
 }
 
 .container-fluid {
@@ -121,7 +157,7 @@ $btn-margin: .1em;
 }
 
 .wrapper {
-    width: 75%;
+    width: $wrap-width;
     margin: 0 auto;
     text-align: center;
     background-color: rgba($wrapper-bg,.7);
@@ -130,12 +166,12 @@ $btn-margin: .1em;
     color: $font-color;
     border-radius: 5px 5px 0px 0px;
     margin-top: 1em;
-    max-width: 1000px;
-
-    @media only screen and (max-width: $mobile-width) {
+    
+    @media only screen and (max-width: $wrap-width) {
         width: 100%;
         padding: .5em;
         margin-top: 0;
+        min-width: 364px;
     }
 
     h1 {
@@ -153,10 +189,15 @@ $btn-margin: .1em;
 
 .calcBody {
     background-color: gray;
+    overflow: hidden;
+    padding: 10px;
+
+    @media only screen and (max-width: $wrap-width) {
+        width: 343px;
+    }
 
     .window {
         background-color: white;
-        width: 90%;
         height: 4em;
     }
 
@@ -182,15 +223,24 @@ $btn-margin: .1em;
     }
 }
 
+.btnHolder {
+    font-size: 0.8em;
+    padding-top: 10px;
+    overflow: hidden;
+
+    > div {
+        float: left;
+    }
+}
 .calcButton {
     border-radius: 10px;
     border-style: solid;
-    border-width: 0px 2px 4px 0px;
-    font-size: 0.8em;
+    border-width: 1px 2px 4px 1px;
+    // font-size: 0.8em;
     width: $btn-width;
     display: inline-block;
-    margin-bottom: .6em;
-    line-height: 1.6em;
+    margin-bottom: $btn-btm-margin;
+    line-height: $btn-height;
     @include buttonColors($channel-bg);
     
     &:active {
@@ -208,16 +258,85 @@ $btn-margin: .1em;
             display:inline-block;
         }
     }
+
+    &.h-2 {
+        @include h2;
+    }
+
+    &.w2 {
+        @include w2;
+        margin-left:0;
+        margin-right:0;
+    }
+
+    &.undo {
+        @include buttonColors(#f00);
+    }
+
+    &.inverse {
+        @include buttonColors(#AA9539);
+    }
+
+    .digits & {
+        @include buttonColors(#582A72);
+    }
+}
+
+.bS {
+    float: right;
+    margin-right: 0.1em;
+}
+
+.trig {
+    @include w3;
+}
+
+.const {
+    @include w1;
+}
+
+.baseNum {
+    @include w2;
+
+    @media only screen and (max-width: $wrap-width) {
+        @include w1;
+        margin-top: -1*$btn-height - $btn-btm-margin - 0.4em;
+    }
+}
+
+.baseE {
+    @include w1;
+    margin-top: -1*$btn-height - $btn-btm-margin - 0.4em;
+}
+
+.fact {
+    float: left;
+    clear:left;
+    margin-left: $left-marg;
+
+    @media only screen and (max-width: $wrap-width) {
+        clear:none;
+    }
+}
+
+.parenRow {
+    @include w4;
+}
+
+.misc {
+    @include w1;
+
+    @media only screen and (max-width: $wrap-width) {
+        @include w4;
+    }
 }
 
 .digits {
-    width: $btn-width*3 + $btn-margin*2;
-    display: inline-block;
+    @include w3;
 }
 
-.w1 {
-    width: $btn-width;
-    display: inline-block;
+.sideOp {
+    @include w1;
 }
 
 p {
@@ -225,13 +344,12 @@ p {
         text-align: center;
         font-family: "Times New Roman", Georgia, serif;
         color: $copy-color;
-        width: 75%;
+        width: $wrap-width;
         background-color: rgba($wrapper-bg,.7);
         margin: 0 auto;
         border-radius: 0px 0px 5px 5px;
-        max-width: 1000px;
 
-        @media only screen and (max-width: $mobile-width) {
+        @media only screen and (max-width: $wrap-width) {
             width: 100%;
         }
 

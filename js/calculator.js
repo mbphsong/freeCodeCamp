@@ -121,6 +121,12 @@ $(document).ready(function dR() {
                 },
                 priority: 10,
             },
+            "e^(": {
+                op: function() {
+                    return getPower(Math.E);
+                },
+                priority: 15,
+            },
             "10^(": {
                 op: function() {
                     return getPower(10);
@@ -162,10 +168,8 @@ $(document).ready(function dR() {
                 string: "Ans",
             },
         };
-        const REQ_OP_AFTER = {
-            "!": "!", 
-            "<sup>2</sup>": "<sup>2</sup>",
-        };
+        const REQ_OP_AFTER = new Set(["!", 
+        "<sup>2</sup>"]);
         const FACTORIAL = (function() {
             var factorials = [1,1];
             var currProduct = 1;
@@ -380,6 +384,8 @@ $(document).ready(function dR() {
                         totalString = dropLast(totalString,calcVal + "");
                         numberBuffer = totalString != "" ? "op" : "";
                     }
+                    //make sure we don't have the placeholder in totalString
+                    totalString = totalString.replace("0start","");
                     return {
                         strings: setRunData(totalString + numberWithCommas(calcVal)),
                         stack: stack,
@@ -468,7 +474,7 @@ $(document).ready(function dR() {
                         }
                         lastVal = calcVal;
                         checkStack(input,opStack,calcVal);
-                        if (REQ_OP_AFTER[input]) {
+                        if (REQ_OP_AFTER.has(input)) {
                             //only operates on the number it receives, so need an operand after
                             numberBuffer = "op";
                         } else {
@@ -548,7 +554,7 @@ $(document).ready(function dR() {
                                 return setRunData(totalString + buffer,endParen,"Closing parenthesis without opening parenthesis"); 
                             }
                             checkStack(input,opStack,calcVal);
-                            if (REQ_OP_AFTER[input]) {
+                            if (REQ_OP_AFTER.has(input)) {
                                 //only operates on the number it receives, so need an operand after
                                 numberBuffer = "op";
                             } else {
@@ -622,8 +628,6 @@ $(document).ready(function dR() {
                 var oldPriority = OPERANDS[oldOperand].priority;
                 //pop last operation, update strings
                 var result = removeOperand(input);
-                //clear out the blank "start" in case we didn't make it back...
-                totalString = totalString.replace("0start","");
                 if (newPriority > oldPriority) {
                     //redo any calcs that should be done, add this calc to stack
                     checkStack(input,result.stack,lastVal);
@@ -1058,7 +1062,7 @@ $(document).ready(function dR() {
     function setClicks() {
         $(".calcButton").on("click", function bC(e) {
             letterBuffer = "";
-            // console.log(e.target.className);
+            console.log(e.target.className);
             var result = CALCULATOR.calculate($(e.target).attr("data-calc"));
             eString = result.string;
             rT = result.runningTotal;
@@ -1068,6 +1072,8 @@ $(document).ready(function dR() {
         //tie keyboard to calculator buttons
         $(document).on("keydown keyup", function kC(e) {
             var kC = (e.which) ? e.which : e.keyCode;
+            //keep from sending the last button clicked if "enter"
+            e.preventDefault();
             const shiftMap = {
                 "m49": "5-24-3",
                 "m54": "5-24-16",
@@ -1081,13 +1087,13 @@ $(document).ready(function dR() {
                 //shift key
                 shiftPressed = e.type == "keydown";
             } else {
+                if (shiftPressed) {
+                    //if we have a map item for this key when combined with shift, assign that
+                    kC = shiftMap["m" + kC] || kC;
+                }
                 if (e.type == "keydown") {
                     //don't want to run twice!
                     warn = "";
-                    if (shiftPressed) {
-                        //if we have a map item for this key when combined with shift, assign that
-                        kC = shiftMap["m" + kC] || kC;
-                    }
 
                     if (65 <= kC && kC <= 90) {
                         //letter
@@ -1103,11 +1109,22 @@ $(document).ready(function dR() {
                 }
                 //mimic click
                 $(".kC_" + kC).toggleClass("active",e.type == "keydown");
+                if (e.type == "keyup" && shiftMap["m" + kC]) {
+                    //make sure we don't get stuck if shift comes up first
+                    $(".kC_" + shiftMap["m" + kC]).toggleClass("active",e.type == "keydown");
+                }
+                 
             }
+        });
+        //catch "click" on short press
+        $(".calcButton").on("touchstart touchend", function tC(e) {
+            $(e.target).toggleClass("active",e.type == "touchstart");
         });
         //toggle deg/rad buttons
         $(".toggle").on("click", function togC(e) {
-            $(".toggle").toggleClass("pushed");
+            if (!e.target.classList.contains("pushed")) {
+                $(".toggle").toggleClass("pushed");
+            }
         });
     }
     
@@ -1461,6 +1478,15 @@ $(document).ready(function dR() {
             ["e", "ln(e", "ln(e", ""],
             [")", "ln(2.7182818285)", "ln(e)", ""],
             ["=", "1", "ln(e)=", ""],
+            //test e^x
+            ["e^(", "e^(", "e^(", ""],
+            ["2", "e^(2", "e^(2", ""],
+            [")", "e^(2)", "e^(2)", ""],
+            ["=", "7.3890560989", "e^(2)=", ""],
+            ["ln(", "ln(", "ln(", ""],
+            ["Ans", "ln(Ans", "ln(Ans", ""],
+            [")", "ln(7.3890560989)", "ln(Ans)", ""],
+            ["=", "2", "ln(Ans)=", ""],
             ["AC", "", "", ""],
         ];
         var factorialTest = [
@@ -1532,8 +1558,16 @@ $(document).ready(function dR() {
             //test parenthesis as exponent
             ["2", "2", "2", ""],
             ["^", "2^", "2^", ""],
+                //test backspace first operand
+            ["backspace", "2", "2", ""],
+            ["backspace", "2", "2", ""],
+            ["^", "2^", "2^", ""],
             ["(", "2^(", "2^(", ""],
             ["3", "2^(3", "2^(3", ""],
+            ["+", "2^(3+", "2^(3+", ""],
+                //test backspace first operand inside parens
+            ["backspace", "2^(3", "2^(3", ""],
+            ["backspace", "2^(3", "2^(3", ""],
             ["+", "2^(3+", "2^(3+", ""],
             ["2", "2^(3+2", "2^(3+2", ""],
             [")", "2^(5)", "2^(3+2)", ""],
