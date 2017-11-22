@@ -9,21 +9,20 @@ $copy-color: #ffffff;
 $font-color: #679AC8;
 $shadow-color: #305C84;
 $highlight-color: #FFF2B9;
-$gray: gray;
-$live-color: red;
-$live-highlight: pink;
-$wrapper-bg: #281E00;
-$channel-bg: #202054;
+$gray: #494949;
+$wrapper-bg: rgb(180, 173, 152);
+$main-color: #2e2e79;
+$digit-color: #753897;
+$inverse-color: #C3C356;
+$undo-color: #D04666;
 $input-bg: #FFF2B9;
-$input-trans-length: 500ms;
-$input-delay: 1800ms;
 $header-font: "Josefin Sans";
 $btn-width: 4.5em;
 $btn-margin: .1em;
 $btn-height: 1.6em;
 $btn-btm-margin: .6em;
 $left-marg: 0.3em;
-$wrap-width: 510px;
+$wrap-width: 517px;
 
 
 //these two mixins from joshbroton.com
@@ -60,46 +59,60 @@ $wrap-width: 510px;
     
 }
 
-@mixin perspective($value) {
+@mixin border-radius($radius) {
+    -webkit-border-radius: $radius;
+       -moz-border-radius: $radius;
+        -ms-border-radius: $radius;
+            border-radius: $radius;
+  }
+
+@mixin perspective($value,$preserve) {
     -webkit-perspective: #{$value};
     -moz-perspective: #{$value};
     -ms-perspective: #{$value};
     perspective: #{$value};
     -ms-transform: perspective(#{$value});
     -moz-transform: perspective(#{$value});
-    -moz-transform-style: preserve-3d;
-    -ms-transform-style: preserve-3d;
-    transform-style: preserve-3d;
+    @if($preserve) {
+        -moz-transform-style: preserve-3d;
+        -ms-transform-style: preserve-3d;
+        transform-style: preserve-3d;
+    }
 }
 
-@mixin pressedButton($color) {
-    border-right: 0px solid lighten($color, 10%);
-    border-bottom: 2px solid lighten($color, 10%);
-    background-color: $color;
+@mixin pressedButtons($color,$colorName) {
+    $bg: $color;
+    $border: darken($color,10%);
+
+    %pressedButton-#{$colorName} {
+        border-right: 0px solid $bg;
+        border-bottom: 2px solid $bg;
+        background-color: $border;
+    }
 }
 
-@mixin buttonColors($color) {
-    background-color: lighten($color,10%);
-    border-bottom-color: $color;
-    border-right-color: $color;
-    border-top-color: lighten($color,50%);
-    border-left-color: lighten($color,50%);
+@mixin buttonColors($color,$colorName) {
+    $bg: $color;
+    $border: darken($color,10%);
+    $highlight: lighten($color,15%);
 
+    background-color: $bg;
+    border-bottom-color: $border;
+    border-right-color: $border;
+    border-top-color: $highlight;
+    border-left-color: $highlight;
+
+    
     &:active {
-        @include pressedButton($color);
+        @extend %pressedButton-#{$colorName};
     }
     &.active {
-        @include pressedButton($color);
+        @extend %pressedButton-#{$colorName};
     }
     &.pushed {
-        @include pressedButton($color);
+        @extend %pressedButton-#{$colorName};
     }
-}
-
-@mixin w1 {
-    width: $btn-width*1;
-    margin-left: $left-marg;
-    // margin-right: 0.2em;
+    
 }
 
 @mixin w2 {
@@ -123,6 +136,30 @@ $wrap-width: 510px;
 @mixin h2 {
     line-height: $btn-height*2 + $btn-btm-margin + 0.2em;
 }
+
+@include pressedButtons($main-color,"main");
+@include pressedButtons($inverse-color,"inverse");
+@include pressedButtons($digit-color,"digits");
+@include pressedButtons($undo-color,"undo");
+
+%w1-style {
+    width: $btn-width*1;
+    margin-left: $left-marg;
+
+    > :active {
+        margin-top: 2px;
+    }
+
+    > .active {
+        margin-top: 2px;
+    }
+
+    > .pushed {
+        margin-top: 2px;
+    }
+}
+
+
 
 .container-fluid {
     position: relative;
@@ -160,18 +197,18 @@ $wrap-width: 510px;
     width: $wrap-width;
     margin: 0 auto;
     text-align: center;
-    background-color: rgba($wrapper-bg,.7);
+    // background-color: rgba($wrapper-bg,.7);
     font-size: 1.5em;
     padding: 2em 2em .5em 2em;
     color: $font-color;
-    border-radius: 5px 5px 0px 0px;
+    @include border-radius(5px 5px 0px 0px);
     margin-top: 1em;
     
     @media only screen and (max-width: $wrap-width) {
         width: 100%;
-        padding: .5em;
+        padding: 0;
         margin-top: 0;
-        min-width: 364px;
+        min-width: 350px;
     }
 
     h1 {
@@ -188,52 +225,104 @@ $wrap-width: 510px;
 }
 
 .calcBody {
-    background-color: gray;
-    overflow: hidden;
-    padding: 10px;
+    background-color: $gray;
+    // overflow: hidden;
+    padding: 10px 0px 0px 0px;
+    margin: 0 auto;
+    @include border-radius(18px);
+    border-bottom: 10px solid darken($gray,5%);
+    border-right: 5px solid darken($gray,5%);
+    border-top: 2px solid lighten($gray,15%);
+    border-left: 2px solid lighten($gray, 15%);
+    box-shadow: 5px 5px 10px #111111;
+    @include perspective(1000px,false);
+    perspective-origin: 50% 100%;
 
     @media only screen and (max-width: $wrap-width) {
-        width: 343px;
+        width: 350px;
     }
 
     .window {
+        // background-color: white;
+        height: 5em;
+        border-style: solid;
+        border-width: 0em 0.4em .4em 0.4em;
+        border-color: #454545;
+        border-bottom-color: #404040;
+        background-color: $gray;
+        transform: rotateX(-16deg);
+        padding: 10px 0px;
+        border-radius: 18px 18px 0px 0px;
+    }
+
+    .spinner {
+        // perspective-origin: 10%; 
+        // outline: 1px solid #404040;
+        // transform-style: preserve-3d;
+        height: 4.1em;
         background-color: white;
-        height: 4em;
+        box-shadow: inset 1px 2px 7px 0px #404040;
+        overflow: hidden;
+        text-align: right;
+        white-space: nowrap;
+        width: 100%;
+        position: relative;
+        // border-bottom: 2px inset #404040;
     }
 
     .eS {
         line-height: 1em;
         font-size: .8em;
-        width: 100%;
+        // width: 100%;
+        height: 1em;
+        padding-top:.3em;
+        float: right;
+        padding-right: .3em;
     }
     .tS {
         font-size: 1.5em;
         text-align: right;
-        display:inline-block;
-    }
-    .end-reminder {
-        text-align: right;
-        color: $gray;
-        display: inline-block;
+        // display:inline-block;
+        line-height: 1.4em;
+        height: 1.4em;
+        float: right;
+        clear: right;
+        padding-right: .3em;
+
+        span {
+            color: lighten($gray,50%);
+            
+        }
     }
     .warn {
-        font-size: .8em;
-        line-height: 1em;
+        font-size: .6em;
+        line-height: .8em;
         width: 100%;
+        position: absolute;
+        padding-right: 0.7em;
+        bottom: 0.3em;
     }
 }
 
 .btnHolder {
     font-size: 0.8em;
-    padding-top: 10px;
+    // padding-top: 10px;
     overflow: hidden;
+    padding:10px;
 
     > div {
         float: left;
     }
+
+    > .bS {
+        float: right;
+        @extend %w1-style;
+        margin-right: 0.1em;
+        margin-left: 0;
+    }
 }
 .calcButton {
-    border-radius: 10px;
+    @include border-radius(10px);
     border-style: solid;
     border-width: 1px 2px 4px 1px;
     // font-size: 0.8em;
@@ -241,7 +330,9 @@ $wrap-width: 510px;
     display: inline-block;
     margin-bottom: $btn-btm-margin;
     line-height: $btn-height;
-    @include buttonColors($channel-bg);
+    box-shadow: 1px 1px 1px #050505;
+    vertical-align: bottom;
+    @include buttonColors($main-color,"main");
     
     &:active {
         outline: none;
@@ -270,21 +361,16 @@ $wrap-width: 510px;
     }
 
     &.undo {
-        @include buttonColors(#f00);
+        @include buttonColors($undo-color,"undo");
     }
 
     &.inverse {
-        @include buttonColors(#AA9539);
+        @include buttonColors($inverse-color,"inverse");
     }
 
     .digits & {
-        @include buttonColors(#582A72);
+        @include buttonColors($digit-color,"digits");
     }
-}
-
-.bS {
-    float: right;
-    margin-right: 0.1em;
 }
 
 .trig {
@@ -292,27 +378,27 @@ $wrap-width: 510px;
 }
 
 .const {
-    @include w1;
+    @extend %w1-style;
 }
 
 .baseNum {
     @include w2;
 
+    @extend %w1-media;
     @media only screen and (max-width: $wrap-width) {
-        @include w1;
         margin-top: -1*$btn-height - $btn-btm-margin - 0.4em;
     }
 }
 
 .baseE {
-    @include w1;
+    @extend %w1-style;
     margin-top: -1*$btn-height - $btn-btm-margin - 0.4em;
 }
 
 .fact {
     float: left;
     clear:left;
-    margin-left: $left-marg;
+    @extend %w1-style;
 
     @media only screen and (max-width: $wrap-width) {
         clear:none;
@@ -324,7 +410,7 @@ $wrap-width: 510px;
 }
 
 .misc {
-    @include w1;
+    @extend %w1-style;
 
     @media only screen and (max-width: $wrap-width) {
         @include w4;
@@ -336,7 +422,7 @@ $wrap-width: 510px;
 }
 
 .sideOp {
-    @include w1;
+    @extend %w1-style;
 }
 
 p {
@@ -345,9 +431,9 @@ p {
         font-family: "Times New Roman", Georgia, serif;
         color: $copy-color;
         width: $wrap-width;
-        background-color: rgba($wrapper-bg,.7);
+        // background-color: rgba($wrapper-bg,.7);
         margin: 0 auto;
-        border-radius: 0px 0px 5px 5px;
+        @include border-radius(0px 0px 5px 5px);
 
         @media only screen and (max-width: $wrap-width) {
             width: 100%;
@@ -370,4 +456,21 @@ p {
     }
 }
 
-
+%w1-media {
+    @media only screen and (max-width: $wrap-width) {
+        width: $btn-width*1;
+        margin-left: $left-marg;
+        
+        > :active {
+            margin-top: 2px;
+        }
+        
+        > .active {
+            margin-top: 2px;
+        }
+        
+        > .pushed {
+            margin-top: 2px;
+        }
+    }
+}

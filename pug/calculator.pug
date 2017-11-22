@@ -4,11 +4,10 @@ mixin setButton(text,data,classes)
     .wrapper
         .calcBody
             .window
-                .eS
-                .holder
+                .spinner
+                    .eS
                     .tS
-                    .end-reminder
-                .warn
+                    .warn
             .btnHolder
                 +setButton("AC","AC","undo")
                 +setButton("CE","CE","kC_46 undo")
@@ -21,28 +20,30 @@ mixin setButton(text,data,classes)
                     +setButton("sin","sin(","kC_19-9-14")
                     +setButton("cos","cos(","kC_3-15-19")
                     +setButton("tan","tan(","kC_20-1-14")
-                +setButton("&#x232B;","backspace","kC_8 undo bS")
+                .bS
+                    +setButton("&#x232B;","backspace","kC_8 undo")
                 .const
                     +setButton("&pi;","PI","kC_16-9")
                     +setButton("e","e","kC_e")
                 .baseNum
+                    +setButton("log<sub>10</sub>","log<sub>10</sub>(","kC_12-15-7-10 inverse")
                     +setButton("10<sup>x</sup>","10^(","")
-                    +setButton("log<sub>10</sub>","log<sub>10</sub>(","kC_12-15-7-10")
                 .baseNum
+                    +setButton("log<sub>2</sub>","log<sub>2</sub>(","kC_12-15-7-2 inverse")
                     +setButton("2<sup>x</sup>","2^(","")
-                    +setButton("log<sub>2</sub>","log<sub>2</sub>(","kC_12-15-7-2")
                 .baseE
+                    +setButton("ln","ln(","kC_12-14 inverse")
                     +setButton("e<sup>x</sup>","e^(","")
-                    +setButton("ln","ln(","kC_12-14")
-                +setButton("x!","!","kC_5-24-3 fact")
+                .fact
+                    +setButton("x!","!","kC_5-24-3")
                 .parenRow
                     +setButton("(","(","kC_16-1-18")
                     +setButton(")",")","kC_5-14-4")
                     +setButton("/","/","kC_111 kC_191 kC_47")
                     +setButton("*","*","kC_106 kC_42")
                 .misc
-                    +setButton("x<sup>2</sup>","<sup>2</sup>","")
-                    +setButton("&radic;","&radic;(","")
+                    +setButton("&radic;","&radic;(","inverse")
+                    +setButton("x<sup>2</sup>","<sup>2 </sup>","")
                     +setButton("^","^","kC_5-24-16")
                     +setButton("Ans","Ans","kC_1-14-19")
                 .digits
