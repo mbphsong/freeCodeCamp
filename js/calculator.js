@@ -187,8 +187,11 @@
                 return factorials[value];
             }
             function factorial(value) {
-                if (isNaN(value)) {
+                if (isNaN(value) || value < 0) {
                     return NaN;
+                }
+                if (value > 170) {
+                    return Infinity;
                 }
                 if ((parseInt(value) != value)) {
                     result = loopFactorial(value) * mockGamma(fixFloat(value % 1));
@@ -222,6 +225,7 @@
     
             return factorial;
         })();
+
         const PEEK = function(arr) {
             return arr[arr.length - 1];
         };
@@ -242,6 +246,14 @@
             var opStack = [stackItem("start",0)];
             var tempStack = [];
             const PREC_LIM = Math.pow(10,10);
+
+            function addLastOp(operator) {
+                lastOperator.push({
+                    op: operator,
+                    temp: tempStack.slice(),
+                });
+                clearTemp();
+            }
             
             function checkEndParen(input,stacks) {
                 if (input == ")") {
@@ -251,7 +263,7 @@
                     parOp.parens = PEEK(stacks.parent).operator;
                     //update parens op in parentStack so it can calculate/return when next operator is called
                     parOp.operator = "endParens";
-                    parOp.storedVal = calcVal;
+                    parOp.storedVal = numberWithCommas(calcVal);
                     parOp.lastVal = lastVal;
                 }
             }
@@ -262,7 +274,6 @@
                     var thisOp = stack.pop();
                     var startingVal = value;
                     //update value for next operation (or to store in stack for this one)
-                   
                     value = fixFloat(thisOp.op(value,degRad));
                     if (value !== value) {
                         //NaN
@@ -282,6 +293,7 @@
                 }
                 //put new operation into stack
                 stack.push(stackItem(input, value));
+                addLastOp(input);
                 calcVal = value;
             }
 
@@ -338,13 +350,18 @@
             function removeOperator(input) {
                 //remove last operator, no replacement at this point
                 if (lastOperator.length > 0) {
-                    var lastOp = lastOperator.pop();
-                    var penOp = PEEK(lastOperator);
+                    var thisArr = lastOperator.pop();
+                    var lastOp = thisArr.op;
+                    var temp = thisArr.temp || [];
+                    var penOp = getLastOp();
                     var thisOp;
                     var stack;
                     var stacks = {};
                     var addES = "";
                     var lastRedoneOp = "";
+                    var addin = "";
+                    var resetEndParen = false;
+                    var showVal;
                     totalString = dropLast(totalString, lastOp);
                     if (hasParens(opStack)) {
                         stacks = findLast(opStack);
@@ -362,65 +379,54 @@
                     if (!isParens(lastOp)) {
                         thisOp = stack.pop();
                         if (lastOp == ")") {
-                            var peeked = tempStack[0] || {};
-                            var addin = "";
-                            var resetEndParen = false;
-                            if (peeked.operator == "endParens") {
-                                peeked.operator = peeked.parens;
-                                resetEndParen = true;
-                                addin = ")";
-                                //do not have tempStack for previous endParens; cannot undo, so clear 
-                                lastOperator = [];
-                            }
-                            //reset parent object - allow for possibility of "unable to undo" endParens
-                            thisOp.operator = isParens(thisOp.parens) ? thisOp.parens : thisOp.operator;
+                            prevEndParen();
+                            //reset parent object - allow for possibility of 
+                            thisOp.operator = thisOp.parens != [] ? thisOp.parens : thisOp.operator;
                             thisOp.parens = [];
                             //put back in parent stack
                             stack.push(thisOp);
-                            stack = thisOp.parens;
+                            stacks.parent = stack;
+                            stacks.nested = thisOp.parens;
+                            stack = stacks.nested;
                             stack.push(stackItem("start",0));
                             //reset
-                            lastRedoneOp = resetOps(stack,thisOp.storedVal);
+                            lastRedoneOp = resetOps(stack,thisOp.storedVal,temp);
                             totalString += addin;
-                            if (resetEndParen) {
-                                PEEK(stack).operator = "endParens";
-                                calcVal = PEEK(stack).storedVal;
-                                addin = "";
-                            } else if (thisOp.lastVal != undefined) {
-                                calcVal = thisOp.lastVal;
-                                addin = calcVal;
-                            } else {
-                                //can't undo the endparens; maintain old calcVal
-                                addin = calcVal;
-                                addES = ")";
-                                stack = stacks.nested || stacks.parent;
-                            }
-                            
+                            checkReset(); 
+                            showVal = "";
                             addin = addin == undefined ? "" : numberWithCommas(addin);
-                            return {
-                                strings: setRunData(totalString + addin,addES),
-                                stack: stack,
-                                stacks: stacks,
-                            };
+                            // console.log(lastVal);
+                            // return {
+                            //     strings: setRunData(totalString + addin,addES),
+                            //     stack: stack,
+                            //     stacks: stacks,
+                            // };
                         } else if (lastOperator.length > 0) {
-                            //previous operator was endParen; can't undo
-                            if (tempStack.length > 0 && tempStack[0].operator == "endParens") {
-                                clearTemp();
+                            //previous operator was endParen
+                            if (temp.length > 0 && temp[0].operator == "endParens") {
                                 //adjust lastVal so it sends the correct thing through for this case
-                                lastVal = calcVal;
+                                prevEndParen();
+                                // calcVal
+                                // calcVal
+                                // lastVal = calcVal;
                                 numberBuffer = "";
-                                totalString = dropLast(totalString,lastVal);
-                                if (lastOperator.length == 1 && penOp == ")") {
-                                    //can't undo only remaining item, so clear it out
-                                    lastOperator = [];
-                                }
+                                // console.log(thisOp)
+                                // totalString = dropLast(totalString,lastVal);
+                                // if (lastOperator.length == 1 && penOp == ")") {
+                                    //     //can't undo only remaining item, so clear it out
+                                    //     lastOperator = [];
+                                    // }
+                                    lastRedoneOp = resetOps(stack,thisOp.storedVal,temp);
+                                    totalString += addin;
+                                showVal = "";
+                                checkReset();
                             } else {
                                 numberBuffer = "";
-                                lastRedoneOp = resetOps(stack,thisOp.storedVal);
+                                lastRedoneOp = resetOps(stack,thisOp.storedVal,temp);
                             }
                             //since not running resetOps, need to drop here
                         } else {
-                            lastRedoneOp = resetOps(stack,thisOp.storedVal);
+                            lastRedoneOp = resetOps(stack,thisOp.storedVal,temp);
                         }
                     } else {
                         //removed parens - set lastVal to our lastVal before the parenthesis
@@ -429,11 +435,19 @@
                     }
                     if (lastOperator.length == 0 || REQ_OP_AFTER.has(penOp)) {
                         //removed last one - fill calcVal w/storedVal so we have something for next operator
-                        if (thisOp) {
+                        //unless lastOp was ")", because we already set the val for that one
+                        if (thisOp && lastOp != ")") {
                             //only if not undefined (doesn't exist on empty parens at beginning of eS)
                             // if we have a lastVal, use it - otherwise, storedVal
+                            //unless empty totalString, in which case use storedVal
+                            if (penOp != ")") {
+                                if (totalString == "0start") {
+                                    calcVal = thisOp != undefined ? stripCommas(thisOp.storedVal) : lastVal;
+                                } else {
 
-                            calcVal = lastVal == "" ? thisOp.storedVal : lastVal;
+                                    calcVal = lastVal == "" ? stripCommas(thisOp.storedVal) : lastVal;
+                                }
+                            }
                         } else {
                             lastVal = parenKeepVal;
                         }
@@ -446,14 +460,15 @@
                     }
                     // make sure we don't have the placeholder in totalString
                     totalString = totalString.replace("0start","");
-                    var showVal;
+                    
                     //in case of req_op_after penOp that is no longer in lastOperator, get returned value from lastRedoneOp and fill in penOp
                     penOp = penOp != undefined ? penOp : lastRedoneOp;
-                    if (REQ_OP_AFTER.has(penOp) && penOp != ")") {
+                    if (REQ_OP_AFTER.has(penOp)) {
                         //don't want to show the calcVal on totalString if the now-most-recent op needs to have an op after it
                         //unless was endParens, since then we need the result
                         if (totalString.substr(-1 * penOp.length) == penOp) {
                             showVal = "";
+                            addin = "";
                         //unless, of course, we shouldn't have undone this one and therefore won't show unless we add it back in
                         } else if (calcVal == "") {
                             //just in case there isn't actually anything here...even though there should be
@@ -467,45 +482,74 @@
                             //since we shouldn't have removed it in the first place, put it back in
                             opStack.push(thisOp);
                         }
-                    } else {
+                    } else if (lastOp != ")") {
                         //otherwise, make sure we don't change blank string into a zero when we fixFloat
                         showVal = calcVal == "" ? calcVal : numberWithCommas(fixFloat(calcVal));
                     } 
-                        
                     return {
-                        strings: setRunData(totalString + showVal,addES),
+                        strings: setRunData(totalString + showVal + addin,addES),
                         stack: stack,
                         stacks: stacks,
                     };
                 } else {
                     return {
-                        strings: setRunData(totalString,PEEK(lastOperator) || ""),
+                        strings: setRunData(totalString,getLastOp()),
                         stacks: {},
+                    }
+                }
+
+                function checkReset() {
+                    // console.log(stack)
+                    if (resetEndParen) {
+                        PEEK(stack).operator = "endParens";
+                        calcVal = stripCommas(PEEK(stack).storedVal);
+                        addin = "";
+                    } else {
+                        calcVal = thisOp.lastVal;
+                        addin = calcVal;
+                    }
+                }
+
+                function prevEndParen() {
+                    var peeked = temp[0] || {};
+                    
+                    if (peeked.operator == "endParens") {
+                        peeked.operator = peeked.parens;
+                        resetEndParen = true;
+                        addin = ")";
                     }
                 }
             }
 
-            function resetOps(stack,oldVal) {
+            function resetOps(stack,oldVal,temp) {
                 var running = "";
                 var tempOp;
-                while (tempStack.length) {
-                    tempOp = tempStack.pop();
+                //add tilda to end to make sure get last occurence of oldVal
+                totalString += "`";
+                oldVal += "`";
+
+                while (temp.length) {
+                    tempOp = temp.pop();
                     stack.push(tempOp);
                     if (isParens(tempOp.operator)) {
                         running += tempOp.operator + tempOp.storedVal;
                     } else {
                         running += tempOp.storedVal + tempOp.operator;
                     }
-                    totalString = totalString.replace(oldVal,running);
+
+                        totalString = totalString.replace(oldVal,running);
                     oldVal = running;
+                }
+                if (running == "") {
+                    //no temp to undo, so remove the tilda from end of totalString
+                    totalString = dropLast(totalString,"`");
                 }
                 return tempOp != undefined ? tempOp.operator : "";
             }
             
             function runOrderOps(input) {
                 var returnES = input;
-                var lastOp = PEEK(lastOperator);
-                
+                var lastOp = getLastOp();
                 //check for missing numbers, div by 0
                 if (numberBuffer == " " && !isParens(input)) {
                     return setRunData(totalString,"","Number required to run operation");
@@ -518,10 +562,14 @@
                         return setRunData(totalString,"","Cannot divide by 0");
                     }
                 }
-                
+                if (lastOp != ")" && input != ")") {
+                    if (REQ_OP_AFTER.has(lastOp) && input == lastOp) {
+                        return setRunData(totalString,""," ");
+                    }
+                }
                 if (lastOp == "=") {
                     //fill lastResult (strip commas so will calculate)
-                    lastResult = totalString.replace(",","");
+                    lastResult = stripCommas(totalString);
                     //clear total string
                     totalString = "";
                     //clear lastOperator - can't undo past the equals!
@@ -536,9 +584,9 @@
                 //have number or pushed operator after equals or parens
                 if (numberBuffer != "" || lastOp == "=" || isParens(input)) {
                     //reset tempStack so we only have this operation's calcs to "undo" if necessary
-                    if (!isParens(input)) {
-                        clearTemp();
-                    }
+                    // if (!isParens(input)) {
+                    //     clearTemp();
+                    // }
                     //add to stack
                     if (lastOp == "=") {
                         //add to stack
@@ -677,7 +725,7 @@
                 }  else {
                     numberBuffer = "";
                 }
-                lastOperator.push(input);
+                
                 return setRunData(totalString,returnES); 
             }
 
@@ -700,23 +748,28 @@
                 }
             }
 
+            function stripCommas(val) {
+                val = String(val);
+                return val.replace(",","");
+            }
+
             function undoOp(input) {
+                var lastOp = getLastOp();
                 if (input == "backspace") {
-                    if (PEEK(lastOperator) == "=") {
-                        lastOperator = ["="];
+                    if (lastOp == "=") {
+                        lastOperator = [];
+                        addLastOp("=");
                         return setRunData("","clear");
                     }
                     var result = removeOperator();
-
                    return result.strings;
                 } 
-                if (isParens(PEEK(lastOperator)) && !isParens(input)) {
+                if (isParens(lastOp) && !isParens(input)) {
                     //don't want to have two operators in a row, so we can't change the parenthesis to a different operator unless another parenthesis type - do nothing
-                    return setRunData(totalString, PEEK(lastOperator), "Can't have two non-parenthetical operators in a row"); 
+                    return setRunData(totalString, lastOp, "Can't have two non-parenthetical operators in a row"); 
                 }
-                var oldOperator = PEEK(lastOperator);
                 var newPriority = OPERATORS[input].priority;
-                var oldPriority = OPERATORS[oldOperator].priority;
+                var oldPriority = OPERATORS[lastOp].priority;
                 //pop last operation, update strings
                 var result = removeOperator(input);
                 if (newPriority > oldPriority) {
@@ -728,7 +781,7 @@
                     }
                     //update total string for any calculations redone - include lastOperator in case there are two instances of lastVal (ie, 3-3 - replaces first instead of last)
                     // totalString = totalString.replace(oldOperator + lastVal,oldOperator + calcVal);
-                    totalString += numberWithCommas(lastVal) + input;
+                    totalString += numberWithCommas(calcVal) + input;
                 } else {
                     // add op to stack
                         var thisRes = checkStack(input,result.stack,lastVal);
@@ -755,7 +808,7 @@
                 return setData(currTotal,equationString,"Operator required");
             }
             if (numberBuffer == "") {
-                if (PEEK(lastOperator) != "="  && lastOperator.length > 0) {
+                if (getLastOp() != "="  && lastOperator.length > 0) {
                     //new number, clear lastOperator 
                     //unless it is negative, in which case we want to let user backspace
                     //out if intent was to change to minus
@@ -766,6 +819,10 @@
                     //hit "equals" and then entered a number rather than operator - start new equation
                     equationString = "";
                 }
+            } else if(numberBuffer == "-") {
+                //clear if negative
+                lastOperator = [];
+
             }
             
             numberBuffer = numberBuffer.replace(" ","");
@@ -777,11 +834,11 @@
             return setData(equationString == "" ? filterBuffer(numberBuffer) : currTotal + filterBuffer(numberBuffer),equationString + filterBuffer(numberBuffer));
         }
         function calculate(input) {
+            var peeked = getLastOp();
             if (OPERATORS[input]) {
                 var tempBuffer = numberBuffer;
-                var peeked = PEEK(lastOperator);
                 //negative number
-                if (numberBuffer == "" && input == "-" && PEEK(lastOperator) != ")" && PEEK(lastOperator) != "=") {
+                if (numberBuffer == "" && input == "-" && peeked != ")" && peeked != "=") {
                     //negative number - empty buffer, not following endParens or equals
                     return bufferNumbers(input);
                 }
@@ -857,7 +914,7 @@
                 return setData(currTotal,equationString, result.warning);
                 
             } else if (/^[0-9.]+?$/.test(input)) {
-                if (REQ_OP_AFTER.has(PEEK(lastOperator))) {
+                if (REQ_OP_AFTER.has(peeked)) {
                     //no operator selected after closing parenthesis - do nothing
                     return setData(currTotal,equationString,"Operator required"); 
                 }
@@ -867,39 +924,39 @@
                 var result = {};
                 switch (input) {
                     case "backspace":
-                    if (numberBuffer != "" && !numberBuffer.match(/op| |constant/)) {
-                        numberBuffer = dropLast(numberBuffer);
-                        if (numberBuffer == "") {
-                            numberBuffer = " ";
+                        if (numberBuffer != "" && !numberBuffer.match(/op| |constant/)) {
+                            numberBuffer = dropLast(numberBuffer);
+                            if (numberBuffer == "") {
+                                numberBuffer = " ";
+                            }
+                        } else {
+                            if (numberBuffer == "constant") {
+                                //remove constant
+                                numberBuffer = " ";
+                                currTotal = dropLast(currTotal,NUM_CONSTANTS[lastConstant].string);
+                                equationString = dropLast(equationString,NUM_CONSTANTS[lastConstant].string);
+                                lastConstant = "";
+                            } else if (lastOperator.length > 0) {
+                                equationString = dropLast(equationString,peeked);
+                                result = RUN_ORDER.undo(input);
+                                currTotal = result.tS;
+                                updateES(result.addES);
+                            }
+                            return setData(currTotal.replace("0start",""),equationString, result.warning);
                         }
-                    } else {
-                        if (numberBuffer == "constant") {
-                            //remove constant
-                            numberBuffer = " ";
-                            currTotal = dropLast(currTotal,NUM_CONSTANTS[lastConstant].string);
-                            equationString = dropLast(equationString,NUM_CONSTANTS[lastConstant].string);
-                            lastConstant = "";
-                        } else if (lastOperator.length > 0) {
-                            equationString = dropLast(equationString,PEEK(lastOperator));
-                            result = RUN_ORDER.undo(input);
-                            currTotal = result.tS;
-                            updateES(result.addES);
-                        }
-                        return setData(currTotal.replace("0start",""),equationString, result.warning);
-                    }
-                    break;
+                        break;
                     case "AC":
-                    clearAll();
-                    break;
+                        clearAll();
+                        break;
                     case "CE":
-                    clearNumberBuffer();
-                    break;
+                        clearNumberBuffer();
+                        break;
                     case "degrees":
                     case "radians":
-                    degRad = input;
-                    break;
+                        degRad = input;
+                        break;
                     default:
-                    break;
+                        break;
                 }
                 
                 return setData(equationString == "" ? filterBuffer(numberBuffer) : currTotal + filterBuffer(numberBuffer),equationString + filterBuffer(numberBuffer), result.warning);
@@ -950,6 +1007,10 @@
                     return minuend - subtrahend;
                 }
             }
+        }
+
+        function getLastOp() {
+            return lastOperator.length > 0 ? PEEK(lastOperator).op : "";
         }
 
         function getLog(base) {
@@ -1277,7 +1338,9 @@
             [")", "2.7-7/(30.5)", "4-1.3-7/(3+11*(5/2))", ""],
             ["backspace", "2.7-7/(3+11*(2.5)", "4-1.3-7/(3+11*(5/2)", ""],
             //make sure can't undo second closed parens      
-            ["backspace", "2.7-7/(3+11*(2.5)", "4-1.3-7/(3+11*(5/2)", ""],
+            ["backspace", "2.7-7/(3+11*(5/2", "4-1.3-7/(3+11*(5/2", ""],
+            ["backspace", "2.7-7/(3+11*(5/2", "4-1.3-7/(3+11*(5/2", ""],
+            [")", "2.7-7/(3+11*(2.5)", "4-1.3-7/(3+11*(5/2)", ""],
             ["-", "2.7-7/(30.5-", "4-1.3-7/(3+11*(5/2)-", ""],
             ["9", "2.7-7/(30.5-9", "4-1.3-7/(3+11*(5/2)-9", ""],
             [")", "2.7-7/(21.5)", "4-1.3-7/(3+11*(5/2)-9)", ""],
@@ -1290,7 +1353,7 @@
             ["-", "2.7-0.32558139534883723*-", "4-1.3-7/(3+11*(5/2)-9)*-", ""],
             // intend for this to remove the `-` and `*`, then put `-` in place of the `*`       
             ["backspace", "2.7-0.32558139534883723*", "4-1.3-7/(3+11*(5/2)-9)*", ""],
-            ["backspace", "2.7-0.32558139534883723", "4-1.3-7/(3+11*(5/2)-9)", ""],
+            ["backspace", "2.7-7/(21.5)", "4-1.3-7/(3+11*(5/2)-9)", ""],
             ["-", "2.374418604651163-", "4-1.3-7/(3+11*(5/2)-9)-", ""],
             //then change back to `*` and add `-3` to strings
             ["*", "2.7-0.32558139534883723*", "4-1.3-7/(3+11*(5/2)-9)*", ""],
@@ -1303,206 +1366,244 @@
             ["AC", "", "", ""],
         ];
         var bSTest = [
-            ["2", "2", "2", ""],
-            ["+", "2+", "2+", ""],
-            ["3", "2+3", "2+3", ""],
-            ["+", "5+", "2+3+", ""],
-            ["backspace", "2+3", "2+3", ""],
-            ["backspace", "2+3", "2+3", ""],
-            ["-", "5-", "2+3-", ""],
-            ["4", "5-4", "2+3-4", ""],
-            ["+", "1+", "2+3-4+", ""],
-            ["backspace", "5-4", "2+3-4", ""],
-            ["backspace", "5-4", "2+3-4", ""],
-            ["*", "5-4*", "2+3-4*", ""],
-            ["6", "5-4*6", "2+3-4*6", ""],
-            ["+", "-19+", "2+3-4*6+", ""],
-            ["backspace", "5-4*6", "2+3-4*6", ""],
-            ["backspace", "5-4*6", "2+3-4*6", ""],
-            ["(", "5-24*(", "2+3-4*6*(", ""],
-            ["backspace", "5-24*", "2+3-4*6*", ""],
-            ["backspace", "5-4*6", "2+3-4*6", ""],
-            ["backspace", "5-4*6", "2+3-4*6", ""],
-            ["/", "5-24/", "2+3-4*6/", ""],
-            ["(", "5-24/(", "2+3-4*6/(", ""],
-            ["(", "5-24/((", "2+3-4*6/((", ""],
-            ["backspace", "5-24/(", "2+3-4*6/(", ""],
-            ["backspace", "5-24/", "2+3-4*6/", ""],
-            ["backspace", "5-4*6", "2+3-4*6", ""],
-            ["backspace", "5-4*6", "2+3-4*6", ""],
-            ["(", "5-24*(", "2+3-4*6*(", ""],
-            ["7", "5-24*(7", "2+3-4*6*(7", ""],
-            ["backspace", "5-24*(", "2+3-4*6*(", ""],
-            ["backspace", "5-24*(", "2+3-4*6*(", ""],
-            ["8", "5-24*(8", "2+3-4*6*(8", ""],
-            ["!", "5-24*(8!", "2+3-4*6*(8!", ""],
-            ["backspace", "5-24*(8", "2+3-4*6*(8", ""],
-            ["backspace", "5-24*(8", "2+3-4*6*(8", ""],
-            ["!", "5-24*(8!", "2+3-4*6*(8!", ""],
-            ["+", "5-24*(40,320+", "2+3-4*6*(8!+", ""],
-            ["backspace", "5-24*(8!", "2+3-4*6*(8!", ""],
-            ["backspace", "5-24*(8", "2+3-4*6*(8", ""],
-            ["backspace", "5-24*(8", "2+3-4*6*(8", ""],
-            ["+", "5-24*(8+", "2+3-4*6*(8+", ""],
-            ["7", "5-24*(8+7", "2+3-4*6*(8+7", ""],
-            ["+", "5-24*(15+", "2+3-4*6*(8+7+", ""],
-            ["backspace", "5-24*(8+7", "2+3-4*6*(8+7", ""],
-            ["backspace", "5-24*(8+7", "2+3-4*6*(8+7", ""],
-            ["*", "5-24*(8+7*", "2+3-4*6*(8+7*", ""],
-            ["backspace", "5-24*(8+7", "2+3-4*6*(8+7", ""],
-            ["backspace", "5-24*(8+7", "2+3-4*6*(8+7", ""],
-            ["*", "5-24*(8+7*", "2+3-4*6*(8+7*", ""],
-            ["5", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["-", "5-24*(43-", "2+3-4*6*(8+7*5-", ""],
-            ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["^", "5-24*(8+7*5^", "2+3-4*6*(8+7*5^", ""],
-            ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["<sup>2 </sup>", "5-24*(8+7*5<sup>2 </sup>", "2+3-4*6*(8+7*5<sup>2 </sup>", ""],
-            ["PI", "5-24*(8+7*5<sup>2 </sup>", "2+3-4*6*(8+7*5<sup>2 </sup>", "Operator required"],
-            ["/", "5-24*(8+175/", "2+3-4*6*(8+7*5<sup>2 </sup>/", ""],
-            ["backspace", "5-24*(8+7*5<sup>2 </sup>", "2+3-4*6*(8+7*5<sup>2 </sup>", ""],
-            ["*", "5-24*(8+175*", "2+3-4*6*(8+7*5<sup>2 </sup>*", ""],
-            ["*", "5-24*(8+175*", "2+3-4*6*(8+7*5<sup>2 </sup>*", ""],
-            ["backspace", "5-24*(8+7*5<sup>2 </sup>", "2+3-4*6*(8+7*5<sup>2 </sup>", ""],
-            ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["^", "5-24*(8+7*5^", "2+3-4*6*(8+7*5^", ""],
-            ["(", "5-24*(8+7*5^(", "2+3-4*6*(8+7*5^(", ""],
-            ["backspace", "5-24*(8+7*5^", "2+3-4*6*(8+7*5^", ""],
-            ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
-            ["^", "5-24*(8+7*5^", "2+3-4*6*(8+7*5^", ""],
-            ["(", "5-24*(8+7*5^(", "2+3-4*6*(8+7*5^(", ""],
-            ["2", "5-24*(8+7*5^(2", "2+3-4*6*(8+7*5^(2", ""],
-            ["+", "5-24*(8+7*5^(2+", "2+3-4*6*(8+7*5^(2+", ""],
-            ["1", "5-24*(8+7*5^(2+1", "2+3-4*6*(8+7*5^(2+1", ""],
-            [")", "5-24*(8+7*5^(3)", "2+3-4*6*(8+7*5^(2+1)", ""],
-            ["backspace", "5-24*(8+7*5^(2+1", "2+3-4*6*(8+7*5^(2+1", ""],
-            ["backspace", "5-24*(8+7*5^(2+1", "2+3-4*6*(8+7*5^(2+1", ""],
-            [")", "5-24*(8+7*5^(3)", "2+3-4*6*(8+7*5^(2+1)", ""],
-            [")", "5-24*(883)", "2+3-4*6*(8+7*5^(2+1))", ""],
-            ["backspace", "5-24*(8+7*5^(3)", "2+3-4*6*(8+7*5^(2+1)", ""],
-            ["backspace", "5-24*(8+7*5^(3)", "2+3-4*6*(8+7*5^(2+1)", ""],
-            ["backspace", "5-24*(8+7*5^(3)", "2+3-4*6*(8+7*5^(2+1)", ""],
-            ["=", "-21,187", "2+3-4*6*(8+7*5^(2+1))=", ""],
-            ["backspace", "", "", ""],
-            ["backspace", "", "", ""],
+            // ["2", "2", "2", ""],
+            // ["+", "2+", "2+", ""],
+            // ["3", "2+3", "2+3", ""],
+            // ["+", "5+", "2+3+", ""],
+            // ["backspace", "2+3", "2+3", ""],
+            // ["backspace", "2+3", "2+3", ""],
+            // ["-", "5-", "2+3-", ""],
+            // ["4", "5-4", "2+3-4", ""],
+            // ["+", "1+", "2+3-4+", ""],
+            // ["backspace", "5-4", "2+3-4", ""],
+            // ["backspace", "5-4", "2+3-4", ""],
+            // ["*", "5-4*", "2+3-4*", ""],
+            // ["6", "5-4*6", "2+3-4*6", ""],
+            // ["+", "-19+", "2+3-4*6+", ""],
+            // ["backspace", "5-4*6", "2+3-4*6", ""],
+            // ["backspace", "5-4*6", "2+3-4*6", ""],
+            // ["(", "5-24*(", "2+3-4*6*(", ""],
+            // ["backspace", "5-24*", "2+3-4*6*", ""],
+            // ["backspace", "5-4*6", "2+3-4*6", ""],
+            // ["backspace", "5-4*6", "2+3-4*6", ""],
+            // ["/", "5-24/", "2+3-4*6/", ""],
+            // ["(", "5-24/(", "2+3-4*6/(", ""],
+            // ["(", "5-24/((", "2+3-4*6/((", ""],
+            // ["backspace", "5-24/(", "2+3-4*6/(", ""],
+            // ["backspace", "5-24/", "2+3-4*6/", ""],
+            // ["backspace", "5-4*6", "2+3-4*6", ""],
+            // ["backspace", "5-4*6", "2+3-4*6", ""],
+            // ["(", "5-24*(", "2+3-4*6*(", ""],
+            // ["7", "5-24*(7", "2+3-4*6*(7", ""],
+            // ["backspace", "5-24*(", "2+3-4*6*(", ""],
+            // ["backspace", "5-24*(", "2+3-4*6*(", ""],
+            // ["8", "5-24*(8", "2+3-4*6*(8", ""],
+            // ["!", "5-24*(8!", "2+3-4*6*(8!", ""],
+            // ["backspace", "5-24*(8", "2+3-4*6*(8", ""],
+            // ["backspace", "5-24*(8", "2+3-4*6*(8", ""],
+            // ["!", "5-24*(8!", "2+3-4*6*(8!", ""],
+            // ["+", "5-24*(40,320+", "2+3-4*6*(8!+", ""],
+            // ["backspace", "5-24*(8!", "2+3-4*6*(8!", ""],
+            // ["backspace", "5-24*(8", "2+3-4*6*(8", ""],
+            // ["backspace", "5-24*(8", "2+3-4*6*(8", ""],
+            // ["+", "5-24*(8+", "2+3-4*6*(8+", ""],
+            // ["7", "5-24*(8+7", "2+3-4*6*(8+7", ""],
+            // ["+", "5-24*(15+", "2+3-4*6*(8+7+", ""],
+            // ["backspace", "5-24*(8+7", "2+3-4*6*(8+7", ""],
+            // ["backspace", "5-24*(8+7", "2+3-4*6*(8+7", ""],
+            // ["*", "5-24*(8+7*", "2+3-4*6*(8+7*", ""],
+            // ["backspace", "5-24*(8+7", "2+3-4*6*(8+7", ""],
+            // ["backspace", "5-24*(8+7", "2+3-4*6*(8+7", ""],
+            // ["*", "5-24*(8+7*", "2+3-4*6*(8+7*", ""],
+            // ["5", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["-", "5-24*(43-", "2+3-4*6*(8+7*5-", ""],
+            // ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["^", "5-24*(8+7*5^", "2+3-4*6*(8+7*5^", ""],
+            // ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["<sup>2 </sup>", "5-24*(8+7*5<sup>2 </sup>", "2+3-4*6*(8+7*5<sup>2 </sup>", ""],
+            // ["PI", "5-24*(8+7*5<sup>2 </sup>", "2+3-4*6*(8+7*5<sup>2 </sup>", "Operator required"],
+            // ["/", "5-24*(8+175/", "2+3-4*6*(8+7*5<sup>2 </sup>/", ""],
+            // ["backspace", "5-24*(8+7*5<sup>2 </sup>", "2+3-4*6*(8+7*5<sup>2 </sup>", ""],
+            // ["*", "5-24*(8+175*", "2+3-4*6*(8+7*5<sup>2 </sup>*", ""],
+            // ["*", "5-24*(8+175*", "2+3-4*6*(8+7*5<sup>2 </sup>*", ""],
+            // ["backspace", "5-24*(8+7*5<sup>2 </sup>", "2+3-4*6*(8+7*5<sup>2 </sup>", ""],
+            // ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["^", "5-24*(8+7*5^", "2+3-4*6*(8+7*5^", ""],
+            // ["(", "5-24*(8+7*5^(", "2+3-4*6*(8+7*5^(", ""],
+            // ["backspace", "5-24*(8+7*5^", "2+3-4*6*(8+7*5^", ""],
+            // ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["backspace", "5-24*(8+7*5", "2+3-4*6*(8+7*5", ""],
+            // ["^", "5-24*(8+7*5^", "2+3-4*6*(8+7*5^", ""],
+            // ["(", "5-24*(8+7*5^(", "2+3-4*6*(8+7*5^(", ""],
+            // ["2", "5-24*(8+7*5^(2", "2+3-4*6*(8+7*5^(2", ""],
+            // ["+", "5-24*(8+7*5^(2+", "2+3-4*6*(8+7*5^(2+", ""],
+            // ["1", "5-24*(8+7*5^(2+1", "2+3-4*6*(8+7*5^(2+1", ""],
+            // [")", "5-24*(8+7*5^(3)", "2+3-4*6*(8+7*5^(2+1)", ""],
+            // ["backspace", "5-24*(8+7*5^(2+1", "2+3-4*6*(8+7*5^(2+1", ""],
+            // ["backspace", "5-24*(8+7*5^(2+1", "2+3-4*6*(8+7*5^(2+1", ""],
+            // ["*", "5-24*(8+7*5^(2+1*", "2+3-4*6*(8+7*5^(2+1*", ""],
+            // ["2", "5-24*(8+7*5^(2+1*2", "2+3-4*6*(8+7*5^(2+1*2", ""],
+            // ["+", "5-24*(8+7*5^(4+", "2+3-4*6*(8+7*5^(2+1*2+", ""],
+            // ["-", "5-24*(8+7*5^(4+-", "2+3-4*6*(8+7*5^(2+1*2+-", ""],
+            // ["1", "5-24*(8+7*5^(4+-1", "2+3-4*6*(8+7*5^(2+1*2+-1", ""],
+            // [")", "5-24*(8+7*5^(3)", "2+3-4*6*(8+7*5^(2+1*2+-1)", ""],
+            // [")", "5-24*(883)", "2+3-4*6*(8+7*5^(2+1*2+-1))", ""],
+            // ["backspace", "5-24*(8+7*5^(3)", "2+3-4*6*(8+7*5^(2+1*2+-1)", ""],
+            // ["backspace", "5-24*(8+7*5^(4+-1", "2+3-4*6*(8+7*5^(2+1*2+-1", ""],
+            // ["backspace", "5-24*(8+7*5^(4+-1", "2+3-4*6*(8+7*5^(2+1*2+-1", ""],
+            // ["=", "-21,187", "2+3-4*6*(8+7*5^(2+1*2+-1))=", ""],
+            // ["backspace", "", "", ""],
+            // ["backspace", "", "", ""],
+            // ["(", "(", "(", ""],
+            // ["backspace", "", "", ""],
+            // ["backspace", "", "", ""],
+            // ["Ans", "Ans", "Ans", ""],
+            // ["backspace", "", "", ""],
+            // ["backspace", "", "", ""],
+            // ["Ans", "Ans", "Ans", ""],
+            // ["^", "-21,187^", "Ans^", ""],
+            // ["backspace", "-21,187", "Ans", ""],
+            // ["backspace", "-21,187", "Ans", ""],
+            // ["*", "-21,187*", "Ans*", ""],
+            // ["-", "-21,187*-", "Ans*-", ""],
+            // ["backspace", "-21,187*", "Ans*", ""],
+            // ["backspace", "-21,187", "Ans", ""],
+            // ["backspace", "-21,187", "Ans", ""],
+            // ["*", "-21,187*", "Ans*", ""],
+            // ["-", "-21,187*-", "Ans*-", ""],
+            // ["1", "-21,187*-1", "Ans*-1", ""],
+            // ["=", "21,187", "Ans*-1=", ""],
+            // ["backspace", "", "", ""],
+            // ["backspace", "", "", ""],
+            // ["^", "21,187^", "21,187^", ""],
+            // ["(", "21,187^(", "21,187^(", ""],
+            // ["backspace", "21,187^", "21,187^", ""],
+            // ["backspace", "21,187", "21,187", ""],
+            // ["backspace", "21,187", "21,187", ""],
+            // ["^", "21,187^", "21,187^", ""],
+            // ["(", "21,187^(", "21,187^(", ""],
+            // [".", "21,187^(.", "21,187^(.", ""],
+            // ["3", "21,187^(.3", "21,187^(.3", ""],
+            // [")", "21,187^(0.3)", "21,187^(.3)", ""],
+            // ["-", "19.852757602153737-", "21,187^(.3)-", ""],
+            // ["PI", "19.852757602153737-&pi;", "21,187^(.3)-&pi;", ""],
+            // ["backspace", "19.852757602153737-", "21,187^(.3)-", ""],
+            // ["backspace", "19.852757602153737-", "21,187^(.3)-", ""],
+            // ["e", "19.852757602153737-e", "21,187^(.3)-e", ""],
+            // ["backspace", "19.852757602153737-", "21,187^(.3)-", ""],
+            // ["backspace", "19.852757602153737-", "21,187^(.3)-", ""],
+            // ["1", "19.852757602153737-1", "21,187^(.3)-1", ""],
+            // ["+", "18.852757602153737+", "21,187^(.3)-1+", ""],
+            // ["e", "18.852757602153737+e", "21,187^(.3)-1+e", ""],
+            // ["PI", "18.852757602153737+2.718281828459045*&pi;", "21,187^(.3)-1+e*&pi;", ""],
+            // ["backspace", "18.852757602153737+2.718281828459045*", "21,187^(.3)-1+e*", ""],
+            // ["backspace", "18.852757602153737+2.718281828459045*", "21,187^(.3)-1+e*", ""],
+            // ["/", "18.852757602153737+2.718281828459045*", "21,187^(.3)-1+e*", "Number required to run operation"],
+            // ["1", "18.852757602153737+2.718281828459045*1", "21,187^(.3)-1+e*1", ""],
+            // ["=", "21.57103943061278", "21,187^(.3)-1+e*1=", ""],
+            // ["(", "(", "(", ""],
+            // ["backspace", "", "", ""],
+            // ["backspace", "", "", ""],
+            // ["3", "3", "3", ""],
+            // ["!", "3!", "3!", ""],
+            // ["backspace", "3", "3", ""],
+            // ["backspace", "3", "3", ""],
+            // ["!", "3!", "3!", ""],
+            // ["!", "3!", "3!", " "],
+            // ["backspace", "3", "3", ""],
+            // ["backspace", "3", "3", ""],
+            // ["!", "3!", "3!", ""],
+            // ["!", "3!", "3!", " "],
+            ["AC", "", "", ""],
             ["(", "(", "(", ""],
-            ["backspace", "", "", ""],
-            ["backspace", "", "", ""],
-            ["Ans", "Ans", "Ans", ""],
-            ["backspace", "", "", ""],
-            ["backspace", "", "", ""],
-            ["Ans", "Ans", "Ans", ""],
-            ["^", "-21,187^", "Ans^", ""],
-            ["backspace", "-21,187", "Ans", ""],
-            ["backspace", "-21,187", "Ans", ""],
-            ["*", "-21,187*", "Ans*", ""],
-            ["-", "-21,187*-", "Ans*-", ""],
-            ["backspace", "-21,187*", "Ans*", ""],
-            ["backspace", "-21,187", "Ans", ""],
-            ["backspace", "-21,187", "Ans", ""],
-            ["*", "-21,187*", "Ans*", ""],
-            ["-", "-21,187*-", "Ans*-", ""],
-            ["1", "-21,187*-1", "Ans*-1", ""],
-            ["=", "21,187", "Ans*-1=", ""],
-            ["backspace", "", "", ""],
-            ["backspace", "", "", ""],
-            ["^", "21,187^", "21,187^", ""],
-            ["(", "21,187^(", "21,187^(", ""],
-            ["backspace", "21,187^", "21,187^", ""],
-            ["backspace", "21,187", "21,187", ""],
-            ["backspace", "21,187", "21,187", ""],
-            ["^", "21,187^", "21,187^", ""],
-            ["(", "21,187^(", "21,187^(", ""],
-            [".", "21,187^(.", "21,187^(.", ""],
-            ["3", "21,187^(.3", "21,187^(.3", ""],
-            [")", "21,187^(0.3)", "21,187^(.3)", ""],
-            ["-", "19.852757602153737-", "21,187^(.3)-", ""],
-            ["PI", "19.852757602153737-&pi;", "21,187^(.3)-&pi;", ""],
-            ["backspace", "19.852757602153737-", "21,187^(.3)-", ""],
-            ["backspace", "19.852757602153737-", "21,187^(.3)-", ""],
-            ["e", "19.852757602153737-e", "21,187^(.3)-e", ""],
-            ["backspace", "19.852757602153737-", "21,187^(.3)-", ""],
-            ["backspace", "19.852757602153737-", "21,187^(.3)-", ""],
-            ["1", "19.852757602153737-1", "21,187^(.3)-1", ""],
-            ["+", "18.852757602153737+", "21,187^(.3)-1+", ""],
-            ["e", "18.852757602153737+e", "21,187^(.3)-1+e", ""],
-            ["PI", "18.852757602153737+2.718281828459045*&pi;", "21,187^(.3)-1+e*&pi;", ""],
-            ["backspace", "18.852757602153737+2.718281828459045*", "21,187^(.3)-1+e*", ""],
-            ["backspace", "18.852757602153737+2.718281828459045*", "21,187^(.3)-1+e*", ""],
-            ["/", "18.852757602153737+2.718281828459045*", "21,187^(.3)-1+e*", "Number required to run operation"],
-            ["1", "18.852757602153737+2.718281828459045*1", "21,187^(.3)-1+e*1", ""],
-            ["=", "21.57103943061278", "21,187^(.3)-1+e*1=", ""],
-            ["(", "(", "(", ""],
-            ["backspace", "", "", ""],
-            ["backspace", "", "", ""],
-            ["3", "3", "3", ""],
-            ["!", "3!", "3!", ""],
-            ["backspace", "3", "3", ""],
-            ["backspace", "3", "3", ""],
-            ["!", "3!", "3!", ""],
-            ["!", "6!", "3!!", ""],
-            ["backspace", "3!", "3!", ""],
-            ["backspace", "3", "3", ""],
-            ["backspace", "3", "3", ""],
-            ["!", "3!", "3!", ""],
-            ["!", "6!", "3!!", ""],
-            ["-", "720-", "3!!-", ""],
-            ["backspace", "6!", "3!!", ""],
-            ["backspace", "6!", "3!!", ""],
-            ["backspace", "6!", "3!!", ""],
-            ["10^(", "720*10^(", "3!!*10^(", ""],
-            ["10^(", "720*10^(10^(", "3!!*10^(10^(", ""],
-            ["backspace", "720*10^(", "3!!*10^(", ""],
-            ["backspace", "720*", "3!!*", ""],
-            ["backspace", "6!", "3!!", ""],
-            ["backspace", "6!", "3!!", ""],
-            ["&radic;(", "720*&radic;(", "3!!*&radic;(", ""],
-            ["9", "720*&radic;(9", "3!!*&radic;(9", ""],
-            [")", "720*&radic;(9)", "3!!*&radic;(9)", ""],
-            ["backspace", "720*&radic;(9", "3!!*&radic;(9", ""],
-            ["backspace", "720*&radic;(9", "3!!*&radic;(9", ""],
-            [")", "720*&radic;(9)", "3!!*&radic;(9)", ""],
-            ["<sup>2 </sup>", "720*3<sup>2 </sup>", "3!!*&radic;(9)<sup>2 </sup>", ""],
-            ["<sup>2 </sup>", "720*9<sup>2 </sup>", "3!!*&radic;(9)<sup>2 </sup><sup>2 </sup>", ""],
-            ["backspace", "720*3<sup>2 </sup>", "3!!*&radic;(9)<sup>2 </sup>", ""],
-            ["backspace", "720*3", "3!!*&radic;(9)", ""],
-            ["backspace", "720*3", "3!!*&radic;(9)", ""],
-            ["&radic;(", "2,160*&radic;(", "3!!*&radic;(9)*&radic;(", ""],
-            ["10^(", "2,160*&radic;(10^(", "3!!*&radic;(9)*&radic;(10^(", ""],
-            ["backspace", "2,160*&radic;(", "3!!*&radic;(9)*&radic;(", ""],
-            ["backspace", "2,160*", "3!!*&radic;(9)*", ""],
-            ["backspace", "720*3", "3!!*&radic;(9)", ""],
-            ["backspace", "720*3", "3!!*&radic;(9)", ""],
-            ["&radic;(", "2,160*&radic;(", "3!!*&radic;(9)*&radic;(", ""],
-            ["10^(", "2,160*&radic;(10^(", "3!!*&radic;(9)*&radic;(10^(", ""],
-            ["2", "2,160*&radic;(10^(2", "3!!*&radic;(9)*&radic;(10^(2", ""],
-            ["+", "2,160*&radic;(10^(2+", "3!!*&radic;(9)*&radic;(10^(2+", ""],
-            ["2", "2,160*&radic;(10^(2+2", "3!!*&radic;(9)*&radic;(10^(2+2", ""],
-            [")", "2,160*&radic;(10^(4)", "3!!*&radic;(9)*&radic;(10^(2+2)", ""],
-            ["backspace", "2,160*&radic;(10^(2+2", "3!!*&radic;(9)*&radic;(10^(2+2", ""],
-            ["backspace", "2,160*&radic;(10^(2+2", "3!!*&radic;(9)*&radic;(10^(2+2", ""],
-            [")", "2,160*&radic;(10^(4)", "3!!*&radic;(9)*&radic;(10^(2+2)", ""],
-            ["+", "2,160*&radic;(10,000+", "3!!*&radic;(9)*&radic;(10^(2+2)+", ""],
-            ["backspace", "2,160*&radic;(10,000", "3!!*&radic;(9)*&radic;(10^(2+2)", ""],
-            ["backspace", "2,160*&radic;(10,000", "3!!*&radic;(9)*&radic;(10^(2+2)", ""],
-            ["backspace", "2,160*&radic;(10,000", "3!!*&radic;(9)*&radic;(10^(2+2)", ""],
-            ["0", "2,160*&radic;(10,000", "3!!*&radic;(9)*&radic;(10^(2+2)", "Operator required"],
-            ["+", "2,160*&radic;(10,000+", "3!!*&radic;(9)*&radic;(10^(2+2)+", ""],
-            ["0", "2,160*&radic;(10,000+0", "3!!*&radic;(9)*&radic;(10^(2+2)+0", ""],
-            [")", "2,160*&radic;(10,000)", "3!!*&radic;(9)*&radic;(10^(2+2)+0)", ""],
-            // ["backspace", "2,160*&radic;(10,000+0", "3!!*&radic;(9)*&radic;(10^(2+2)+0", ""],
+            ["3", "(3", "(3", ""],
+            ["!", "(3!", "(3!", ""],
+            [")", "(6)", "(3!)", ""],
+            ["!", "6!", "(3!)!", ""],
+            ["backspace", "(6)", "(3!)", ""],
+            ["backspace", "(3!", "(3!", ""],
+            ["backspace", "(3", "(3", ""],
+            ["backspace", "(3", "(3", ""],
+            ["!", "(3!", "(3!", ""],
+            [")", "(6)", "(3!)", ""],
+            ["!", "6!", "(3!)!", ""],
+            ["-", "720-", "(3!)!-", ""],
+            ["backspace", "6!", "(3!)!", ""],
+            ["backspace", "(6)", "(3!)", ""],
+            ["backspace", "(3!", "(3!", ""],
+            ["backspace", "(3", "(3", ""],
+            ["backspace", "(3", "(3", ""],
+            // ["!", "3!", "3!", ""],
+            // ["!", "6!", "3!!", ""],
+            // ["10^(", "720*10^(", "3!!*10^(", ""],
+            // ["10^(", "720*10^(10^(", "3!!*10^(10^(", ""],
+            // ["backspace", "720*10^(", "3!!*10^(", ""],
+            // ["backspace", "720*", "3!!*", ""],
+            // ["backspace", "6!", "3!!", ""],
+            // ["backspace", "3!", "3!", ""],
+            // ["backspace", "3", "3", ""],
+            // ["backspace", "3", "3", ""],
+            // ["!", "3!", "3!", ""],
+            // ["!", "6!", "3!!", ""],
+            // ["&radic;(", "720*&radic;(", "3!!*&radic;(", ""],
+            // ["9", "720*&radic;(9", "3!!*&radic;(9", ""],
+            // [")", "720*&radic;(9)", "3!!*&radic;(9)", ""],
+            // ["backspace", "720*&radic;(9", "3!!*&radic;(9", ""],
+            // ["backspace", "720*&radic;(9", "3!!*&radic;(9", ""],
+            // [")", "720*&radic;(9)", "3!!*&radic;(9)", ""],
+            // ["<sup>2 </sup>", "720*3<sup>2 </sup>", "3!!*&radic;(9)<sup>2 </sup>", ""],
+            // ["<sup>2 </sup>", "720*9<sup>2 </sup>", "3!!*&radic;(9)<sup>2 </sup><sup>2 </sup>", ""],
+            // ["backspace", "720*3<sup>2 </sup>", "3!!*&radic;(9)<sup>2 </sup>", ""],
+            // ["backspace", "720*&radic;(9)", "3!!*&radic;(9)", ""],
+            // ["backspace", "720*&radic;(9", "3!!*&radic;(9", ""],
+            // ["backspace", "720*&radic;(9", "3!!*&radic;(9", ""],
+            // ["&radic;(", "720*&radic;(9*&radic;(", "3!!*&radic;(9*&radic;(", ""],
+            // ["1", "720*&radic;(9*&radic;(1", "3!!*&radic;(9*&radic;(1", ""],
+            // [")", "720*&radic;(9*&radic;(1)", "3!!*&radic;(9*&radic;(1)", ""],
+            // ["backspace", "720*&radic;(9*&radic;(1", "3!!*&radic;(9*&radic;(1", ""],
+            // ["backspace", "720*&radic;(9*&radic;(1", "3!!*&radic;(9*&radic;(1", ""],
+            // [")", "720*&radic;(9*&radic;(1)", "3!!*&radic;(9*&radic;(1)", ""],
+            // [")", "720*&radic;(9)", "3!!*&radic;(9*&radic;(1))", ""],
+            // ["&radic;(", "2,160*&radic;(", "3!!*&radic;(9*&radic;(1))*&radic;(", ""],
+            // ["10^(", "2,160*&radic;(10^(", "3!!*&radic;(9*&radic;(1))*&radic;(10^(", ""],
+            // ["backspace", "2,160*&radic;(", "3!!*&radic;(9*&radic;(1))*&radic;(", ""],
+            // ["backspace", "2,160*", "3!!*&radic;(9*&radic;(1))*", ""],
+            // ["backspace", "720*&radic;(9)", "3!!*&radic;(9*&radic;(1))", ""],
+            // ["backspace", "720*&radic;(9*&radic;(1)", "3!!*&radic;(9*&radic;(1)", ""],
+            // ["backspace", "720*&radic;(9*&radic;(1", "3!!*&radic;(9*&radic;(1", ""],
+            // ["backspace", "720*&radic;(9*&radic;(1", "3!!*&radic;(9*&radic;(1", ""],
+            // [")", "720*&radic;(9*&radic;(1)", "3!!*&radic;(9*&radic;(1)", ""],
+            // [")", "720*&radic;(9)", "3!!*&radic;(9*&radic;(1))", ""],
+            // ["&radic;(", "2,160*&radic;(", "3!!*&radic;(9*&radic;(1))*&radic;(", ""],
+            // ["10^(", "2,160*&radic;(10^(", "3!!*&radic;(9*&radic;(1))*&radic;(10^(", ""],
+            // ["2", "2,160*&radic;(10^(2", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2", ""],
+            // ["+", "2,160*&radic;(10^(2+", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+", ""],
+            // ["2", "2,160*&radic;(10^(2+2", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2", ""],
+            // [")", "2,160*&radic;(10^(4)", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)", ""],
+            // ["backspace", "2,160*&radic;(10^(2+2", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2", ""],
+            // ["backspace", "2,160*&radic;(10^(2+2", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2", ""],
+            // [")", "2,160*&radic;(10^(4)", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)", ""],
+            // ["+", "2,160*&radic;(10,000+", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)+", ""],
+            // ["backspace", "2,160*&radic;(10^(4)", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)", ""],
+            // ["backspace", "2,160*&radic;(10^(2+2", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2", ""],
+            // ["backspace", "2,160*&radic;(10^(2+2", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2", ""],
+            // [")", "2,160*&radic;(10^(4)", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)", ""],
+            // ["0", "2,160*&radic;(10^(4)", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)", "Operator required"],
+            // ["+", "2,160*&radic;(10,000+", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)+", ""],
+            // ["0", "2,160*&radic;(10,000+0", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)+0", ""],
+            // [")", "2,160*&radic;(10,000)", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)+0)", ""],
+            // ["backspace", "2,160*&radic;(10,000+0", "3!!*&radic;(9*&radic;(1))*&radic;(10^(2+2)+0", ""],
 
-            
+
             // test bS open parens after AC
-            ["AC", "", "", ""],
-            ["(", "(", "(", ""],
-            ["backspace", "", "", ""],
+            // ["AC", "", "", ""],
+            // ["(", "(", "(", ""],
+            // ["backspace", "", "", ""],
 
-            ["AC", "", "", ""],
+            // ["AC", "", "", ""],
         ];
         var div0Test = [
             [5, "5", "5", ""],
@@ -1782,8 +1883,10 @@
             [")", "3+log<sub>2</sub>(8)", "3+log<sub>2</sub>(16/2)", ""],
             ["*", "3+3*", "3+log<sub>2</sub>(16/2)*", ""],
             //test backspace        
-            ["backspace", "3+3", "3+log<sub>2</sub>(16/2)", ""],
-            ["backspace", "3+3", "3+log<sub>2</sub>(16/2)", ""],
+            ["backspace", "3+log<sub>2</sub>(8)", "3+log<sub>2</sub>(16/2)", ""],
+            ["backspace", "3+log<sub>2</sub>(16/2", "3+log<sub>2</sub>(16/2", ""],
+            ["backspace", "3+log<sub>2</sub>(16/2", "3+log<sub>2</sub>(16/2", ""],
+            [")", "3+log<sub>2</sub>(8)", "3+log<sub>2</sub>(16/2)", ""],
             ["*", "3+3*", "3+log<sub>2</sub>(16/2)*", ""],
             ["5", "3+3*5", "3+log<sub>2</sub>(16/2)*5", ""],
             ["=", "18", "3+log<sub>2</sub>(16/2)*5=", ""],
@@ -2058,18 +2161,18 @@
                 }
             }
         }
-        runTests("first", firstTest);
+        // runTests("first", firstTest);
         runTests("backspace", bSTest);
-        runTests("div0", div0Test);
-        runTests("neg1st", neg1stTest);
-        runTests("openOperator", openOperatorTest);
-        runTests("trig", trigTest);
-        runTests("constants", constantsTest);
-        runTests("log", logsTest);
-        runTests("factorial", factorialTest);
-        runTests("Ans", ansTest);
-        runTests("Parens",parensTest);
-        runTests("Misc",miscTest);
+        // runTests("div0", div0Test);
+        // runTests("neg1st", neg1stTest);
+        // runTests("openOperator", openOperatorTest);
+        // runTests("trig", trigTest);
+        // runTests("constants", constantsTest);
+        // runTests("log", logsTest);
+        // runTests("factorial", factorialTest);
+        // runTests("Ans", ansTest);
+        // runTests("Parens",parensTest);
+        // runTests("Misc",miscTest);
     }
     
     // setClicks();
