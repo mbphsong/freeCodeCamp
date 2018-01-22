@@ -253,6 +253,13 @@ $wrap-width: 517px;
         transform: rotateX(-16deg);
         padding: 10px 0px;
         border-radius: 18px 18px 0px 0px;
+
+        // .safari {
+        //     // color:white;
+        //     position: absolute;
+        //     bottom: 0;
+        //     width: 100%;
+        // }
     }
 
     .spinner {
@@ -319,6 +326,14 @@ $wrap-width: 517px;
         @extend %w1-style;
         margin-right: 0.1em;
         margin-left: 0;
+        clear: right;
+
+    }
+
+    > .holdMe {
+        width:100%;
+        padding:0;
+        margin:0;
     }
 }
 .calcButton {
@@ -331,6 +346,7 @@ $wrap-width: 517px;
     margin-bottom: $btn-btm-margin;
     line-height: $btn-height;
     box-shadow: 1px 1px 1px #050505;
+    padding: 1px 6px;
     vertical-align: bottom;
     @include buttonColors($main-color,"main");
     

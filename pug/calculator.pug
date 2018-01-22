@@ -9,10 +9,11 @@ mixin setButton(text,data,classes)
                     .tS
                     .warn
             .btnHolder
-                +setButton("AC","AC","undo")
-                +setButton("CE","CE","kC_46 undo")
-                +setButton("Degrees","degrees","toggle pushed kC_deg")
-                +setButton("Radians","radians","toggle kC_rad")
+                .holdMe
+                    +setButton("AC","AC","undo")
+                    +setButton("CE","CE","kC_46 undo")
+                    +setButton("Degrees","degrees","toggle pushed kC_deg")
+                    +setButton("Radians","radians","toggle kC_rad")
                 .trig
                     +setButton("sin<sup>-1</sup>","sin<sup>-1</sup>(","kC_1-19-9-14 inverse")
                     +setButton("cos<sup>-1</sup>","cos<sup>-1</sup>(","kC_1-3-15-19 inverse")
@@ -43,7 +44,7 @@ mixin setButton(text,data,classes)
                     +setButton("*","*","kC_106 kC_42")
                 .misc
                     +setButton("&radic;","&radic;(","inverse")
-                    +setButton("x<sup>2</sup>","<sup>2 </sup>","")
+                    +setButton("x<sup>2</sup>","<sup>2</sup>","")
                     +setButton("^","^","kC_5-24-16")
                     +setButton("Ans","Ans","kC_1-14-19")
                 .digits
